@@ -35,6 +35,45 @@
         "cs": 2
       },
       "timestamp": "2025-12-08T05:52:25.760Z"
+    },
+    {
+      "playerName": "Person1",
+      "score": 971,
+      "correctAnswers": 5,
+      "subjectScores": {
+        "math": 1,
+        "science": 1,
+        "history": 2,
+        "cs": 1,
+        "undefined": null
+      },
+      "timestamp": "2025-12-08T14:19:15.845Z"
+    },
+    {
+      "playerName": "Person2",
+      "score": 977,
+      "correctAnswers": 5,
+      "subjectScores": {
+        "math": 1,
+        "science": 2,
+        "history": 1,
+        "cs": 1,
+        "undefined": null
+      },
+      "timestamp": "2025-12-08T14:26:06.618Z"
+    },
+    {
+      "playerName": "Person3",
+      "score": 979,
+      "correctAnswers": 5,
+      "subjectScores": {
+        "math": 1,
+        "science": 1,
+        "history": 2,
+        "cs": 1,
+        "undefined": null
+      },
+      "timestamp": "2025-12-08T14:32:10.837Z"
     }
   ]
 }
