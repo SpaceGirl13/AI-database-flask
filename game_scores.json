@@ -1,0 +1,40 @@
+{
+  "scores": [
+    {
+      "playerName": "Hi",
+      "score": 1092,
+      "correctAnswers": 10,
+      "subjectScores": {
+        "math": 3,
+        "science": 3,
+        "history": 2,
+        "cs": 2
+      },
+      "timestamp": "2025-12-08T05:06:29.235Z"
+    },
+    {
+      "playerName": "A",
+      "score": 1091,
+      "correctAnswers": 10,
+      "subjectScores": {
+        "math": 3,
+        "science": 3,
+        "history": 2,
+        "cs": 2
+      },
+      "timestamp": "2025-12-08T05:19:13.780Z"
+    },
+    {
+      "playerName": "A",
+      "score": 1091,
+      "correctAnswers": 10,
+      "subjectScores": {
+        "math": 3,
+        "science": 3,
+        "history": 2,
+        "cs": 2
+      },
+      "timestamp": "2025-12-08T05:52:25.760Z"
+    }
+  ]
+}

@@ -75,7 +75,7 @@ pip install -r requirements.txt
   DEFAULT_USER_PASSWORD='123Hop!'
   DEFAULT_USER_PFP='hop.png'
   # Obtain key, [Google AI Studio](https://aistudio.google.com/api-keys)
-  GEMINI_API_KEY=xxxxx
+  GEMINI_API_KEY=AIzaSyDcFwp7cqvIkmdy6QW5FriqyGhpSnnjnTg
   GEMINI_SERVER=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
   # GitHub Configuation
   GITHUB_TOKEN=ghp_xxx
