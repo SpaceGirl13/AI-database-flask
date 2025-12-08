@@ -1,0 +1,42 @@
+{
+  "english": {
+    "ChatGPT": 1,
+    "Claude": 0,
+    "Gemini": 0,
+    "Copilot": 0
+  },
+  "math": {
+    "ChatGPT": 1,
+    "Claude": 0,
+    "Gemini": 0,
+    "Copilot": 0
+  },
+  "science": {
+    "ChatGPT": 0,
+    "Claude": 0,
+    "Gemini": 1,
+    "Copilot": 0
+  },
+  "cs": {
+    "ChatGPT": 0,
+    "Claude": 1,
+    "Gemini": 0,
+    "Copilot": 0
+  },
+  "history": {
+    "ChatGPT": 1,
+    "Claude": 0,
+    "Gemini": 0,
+    "Copilot": 0
+  },
+  "useAI": {
+    "Yes": 1,
+    "No": 0
+  },
+  "frqs": [
+    {
+      "text": "AI should be allowed to use in classes. AI can act as a tutor to help students learn information rather than doing their homework for them. ",
+      "timestamp": "2025-12-07T18:53:46.064379"
+    }
+  ]
+}

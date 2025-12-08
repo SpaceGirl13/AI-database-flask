@@ -733,6 +733,4 @@ form.addEventListener('submit', async function(e) {
   }
 })();
 </script>
-
-<!-- Gemini AI Chat Widget -->
-{% include social_media/gemini-chat-widget.html %}
+}

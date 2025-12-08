@@ -1,73 +1,40 @@
-# Refactored: Use CRUD naming (read, create) in InfoModel
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask_restful import Api, Resource
+import json
+import os
+from datetime import datetime
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins='*')
+CORS(app)
+DATA_FILE = "survey_data.json"
 
-api = Api(app)
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    return {"english": {"ChatGPT": 0, "Claude": 0, "Gemini": 0, "Copilot": 0}, "math": {"ChatGPT": 0, "Claude": 0, "Gemini": 0, "Copilot": 0}, "science": {"ChatGPT": 0, "Claude": 0, "Gemini": 0, "Copilot": 0}, "cs": {"ChatGPT": 0, "Claude": 0, "Gemini": 0, "Copilot": 0}, "history": {"ChatGPT": 0, "Claude": 0, "Gemini": 0, "Copilot": 0}, "useAI": {"Yes": 0, "No": 0}, "frqs": []}
 
-# --- Model class for InfoDb with CRUD naming ---
-class InfoModel:
-    def __init__(self):
-        self.data = [
-            {
-                "FirstName": "John",
-                "LastName": "Mortensen",
-                "DOB": "October 21",
-                "Residence": "San Diego",
-                "Email": "jmortensen@powayusd.com",
-                "Owns_Cars": ["2015-Fusion", "2011-Ranger", "2003-Excursion", "1997-F350", "1969-Cadillac", "2015-Kuboto-3301"]
-            },
-            {
-                "FirstName": "Shane",
-                "LastName": "Lopez",
-                "DOB": "February 27",
-                "Residence": "San Diego",
-                "Email": "slopez@powayusd.com",
-                "Owns_Cars": ["2021-Insight"]
-            }
-        ]
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
-    def read(self):
-        return self.data
+@app.route("/api/survey", methods=["GET"])
+def get_survey_data():
+    return jsonify(load_data()), 200
 
-    def create(self, entry):
-        self.data.append(entry)
+@app.route("/api/survey", methods=["POST"])
+def submit_survey():
+    form_data = request.json
+    data = load_data()
+    data["english"][form_data["english"]] += 1
+    data["math"][form_data["math"]] += 1
+    data["science"][form_data["science"]] += 1
+    data["cs"][form_data["cs"]] += 1
+    data["history"][form_data["history"]] += 1
+    data["useAI"][form_data["useAI"]] += 1
+    data["frqs"].insert(0, {"text": form_data["frq"], "timestamp": datetime.now().isoformat()})
+    save_data(data)
+    return jsonify({"message": "Survey submitted successfully", "data": data}), 200
 
-# Instantiate the model
-info_model = InfoModel()
-
-# --- API Resource ---
-class DataAPI(Resource):
-    def get(self):
-        return jsonify(info_model.read())
-
-    def post(self):
-        # Add a new entry to InfoDb
-        entry = request.get_json()
-        if not entry:
-            return {"error": "No data provided"}, 400
-        info_model.create(entry)
-        return {"message": "Entry added successfully", "entry": entry}, 201
-
-api.add_resource(DataAPI, '/api/data')
-
-# Wee can use @app.route for HTML endpoints, this will be style for Admin UI
-@app.route('/')
-def say_hello():
-    html_content = """
-    <html>
-    <head>
-        <title>Hello</title>
-    </head>
-    <body>
-        <h2>Hello, World!</h2>
-    </body>
-    </html>
-    """
-    return html_content
-
-if __name__ == '__main__':
-    app.run(port=5001)
+if __name__ == "__main__":
+    app.run(debug=True, port=5001)
