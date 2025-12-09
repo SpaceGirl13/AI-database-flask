@@ -1,39 +1,47 @@
 {
   "english": {
     "ChatGPT": 2,
-    "Claude": 0,
+    "Claude": 2,
     "Gemini": 2,
     "Copilot": 0
   },
   "math": {
     "ChatGPT": 2,
-    "Claude": 1,
-    "Gemini": 0,
+    "Claude": 2,
+    "Gemini": 1,
     "Copilot": 1
   },
   "science": {
-    "ChatGPT": 2,
+    "ChatGPT": 3,
     "Claude": 1,
-    "Gemini": 1,
+    "Gemini": 2,
     "Copilot": 0
   },
   "cs": {
     "ChatGPT": 0,
     "Claude": 4,
-    "Gemini": 0,
+    "Gemini": 2,
     "Copilot": 0
   },
   "history": {
     "ChatGPT": 1,
-    "Claude": 1,
-    "Gemini": 2,
+    "Claude": 2,
+    "Gemini": 3,
     "Copilot": 0
   },
   "useAI": {
-    "Yes": 4,
+    "Yes": 6,
     "No": 0
   },
   "frqs": [
+    {
+      "text": "hi",
+      "timestamp": "2025-12-08T13:52:23.810118"
+    },
+    {
+      "text": "hi",
+      "timestamp": "2025-12-08T13:44:31.206504"
+    },
     {
       "text": "AI should be allowed sometimes in classes as a way for students to enhance their learning.",
       "timestamp": "2025-12-08T06:03:47.175698"

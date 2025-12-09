@@ -3,6 +3,20 @@
     {
       "playerName": "A",
       "rating": 5,
+      "category": "clarity",
+      "comments": "Really enganging and fun!",
+      "timestamp": "2025-12-08T19:56:15.591182"
+    },
+    {
+      "playerName": "Ani",
+      "rating": 5,
+      "category": "engagement",
+      "comments": "",
+      "timestamp": "2025-12-08T14:03:08.535397"
+    },
+    {
+      "playerName": "A",
+      "rating": 5,
       "category": "content",
       "comments": "Great Game!",
       "timestamp": "2025-12-08T06:50:36.335252"

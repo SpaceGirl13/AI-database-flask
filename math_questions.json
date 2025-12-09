@@ -1,0 +1,32 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "What is the derivative of 3x\u2074 - 2x\u00b3?",
+      "answer": "12x\u00b3 - 6x\u00b2",
+      "prompt_template": "Find the derivative of {question} step-by-step. Show all work and explain each step using the power rule.",
+      "category": "derivatives"
+    },
+    {
+      "id": 2,
+      "question": "Find the derivative of sin(x) + cos(x)",
+      "answer": "cos(x) - sin(x)",
+      "prompt_template": "Calculate the derivative of {question}. Explain the derivatives of trigonometric functions and show your work.",
+      "category": "derivatives"
+    },
+    {
+      "id": 3,
+      "question": "What is the derivative of e^(2x)?",
+      "answer": "2e^(2x)",
+      "prompt_template": "Find the derivative of {question}. Use the chain rule and explain each step clearly.",
+      "category": "derivatives"
+    },
+    {
+      "id": 4,
+      "question": "Find the derivative of ln(x\u00b2)",
+      "answer": "2/x",
+      "prompt_template": "Calculate the derivative of {question} step-by-step. Apply the chain rule and logarithm properties.",
+      "category": "derivatives"
+    }
+  ]
+}

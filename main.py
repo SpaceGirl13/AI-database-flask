@@ -32,6 +32,8 @@ from hacks.ai.submodule2 import prompt_api  # Import the prompt engineering API 
 from hacks.ai.submodule1 import survey_api  # Import the survey API blueprint
 from hacks.ai.submodule3 import game_api  # Import the prompt challenge game API blueprint
 from api.submodule3_feedback_api import submodule3_feedback_api  # Import submodule 3 feedback API
+from api.math_questions_api import math_questions_api  # Import math questions API
+from api.science_questions_api import science_questions_api  # Import science questions API
 #from api.announcement import announcement_api ##temporary revert
 
 # database Initialization functions
@@ -61,6 +63,8 @@ load_dotenv()
 app.config['KASM_SERVER'] = os.getenv('KASM_SERVER')
 app.config['KASM_API_KEY'] = os.getenv('KASM_API_KEY')
 app.config['KASM_API_KEY_SECRET'] = os.getenv('KASM_API_KEY_SECRET')
+app.config['GITHUB_TOKEN'] = os.getenv('GITHUB_TOKEN')
+app.config['GITHUB_API_URL'] = os.getenv('GITHUB_API_URL')
 
 
 
@@ -87,6 +91,8 @@ app.register_blueprint(prompt_api, url_prefix='/api/prompts')  # Register the pr
 app.register_blueprint(survey_api, url_prefix='/api')  # Register the survey API blueprint
 app.register_blueprint(game_api, url_prefix='/api/prompt-game')  # Register the prompt challenge game API blueprint
 app.register_blueprint(submodule3_feedback_api, url_prefix='/api/submodule3')  # Register submodule 3 feedback API
+app.register_blueprint(math_questions_api, url_prefix='/api/math')  # Register math questions API
+app.register_blueprint(science_questions_api, url_prefix='/api/science')  # Register science questions API
 # app.register_blueprint(announcement_api) ##temporary revert
 
 # Jokes file initialization
@@ -328,3 +334,4 @@ if __name__ == "__main__":
     port = app.config['FLASK_PORT']
     print(f"** Server running: http://localhost:{port}")  # Pretty link
     app.run(debug=True, host=host, port=port, use_reloader=False)
+

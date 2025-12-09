@@ -1,10 +1,11 @@
 # submodule2.py - Flask Blueprint for Prompt Engineering Module
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 import json
 import os
 from datetime import datetime
 import random
 import requests
+from api.jwt_authorize import optional_token
 
 # Create Blueprint
 prompt_api = Blueprint('prompt_api', __name__)
@@ -25,6 +26,7 @@ def save_prompt_data(data):
         json.dump(data, f, indent=2)
 
 @prompt_api.route('/test', methods=['POST'])
+@optional_token()
 def test_prompt():
     """
     Test a prompt and return a simulated AI response
@@ -41,12 +43,18 @@ def test_prompt():
         # Generate simulated response based on prompt quality
         response = generate_simulated_response(prompt, prompt_type)
 
+        # Get current user info
+        user_id = g.current_user.uid if hasattr(g, 'current_user') and g.current_user else 'anonymous'
+        user_name = g.current_user.name if hasattr(g, 'current_user') and g.current_user else 'Anonymous'
+
         # Save to history
         prompt_data = load_prompt_data()
         prompt_data['prompt_history'].append({
             'prompt': prompt,
             'type': prompt_type,
             'response': response,
+            'user_id': user_id,
+            'user_name': user_name,
             'timestamp': datetime.now().isoformat()
         })
         prompt_data['stats']['total_prompts'] += 1
@@ -140,7 +148,9 @@ def get_prompts_by_type(prompt_type):
             {
                 'prompt': p['prompt'],
                 'timestamp': p['timestamp'],
-                'response': p.get('response', '')
+                'response': p.get('response', ''),
+                'user_id': p.get('user_id', 'anonymous'),
+                'user_name': p.get('user_name', 'Anonymous')
             }
             for p in prompt_data['prompt_history']
             if p.get('type') == prompt_type

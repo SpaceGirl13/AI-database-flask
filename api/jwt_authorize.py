@@ -74,3 +74,33 @@ def token_required(roles=None):
         return decorated
 
     return decorator
+
+def optional_token():
+    '''
+    This function sets g.current_user if a valid JWT token is present,
+    but allows the request to proceed even without authentication.
+    This is useful for endpoints that want to track the user if logged in,
+    but don't require authentication.
+    '''
+    def decorator(func_to_guard):
+        @wraps(func_to_guard)
+        def decorated(*args, **kwargs):
+            token = request.cookies.get(current_app.config["JWT_TOKEN_NAME"])
+            if token:
+                try:
+                    # Decode the token and retrieve the user data
+                    data = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
+                    current_user = User.query.filter_by(_uid=data["_uid"]).first()
+                    if current_user:
+                        # Set the current_user in the global context
+                        g.current_user = current_user
+                except Exception as e:
+                    # If token is invalid, just proceed without setting current_user
+                    pass
+
+            # Proceed with the request regardless of authentication status
+            return func_to_guard(*args, **kwargs)
+
+        return decorated
+
+    return decorator
