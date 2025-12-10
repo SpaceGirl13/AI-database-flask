@@ -1,8 +1,8 @@
 # submodule2.py - Flask Blueprint for Prompt Engineering Module
 from flask import Blueprint, request, jsonify, current_app, g
+from datetime import datetime
 import json
 import os
-from datetime import datetime
 import random
 import requests
 from api.jwt_authorize import optional_token
@@ -165,7 +165,163 @@ def get_prompts_by_type(prompt_type):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Helper functions
+@prompt_api.route('/survey', methods=['POST'])
+def submit_science_survey():
+    """
+    Accepts JSON: { "topic": "biology" | "chemistry" | "physics" }
+    Stores survey entry into DATA_FILE and returns redirectUrl for the client.
+    """
+    try:
+        payload = request.get_json() or {}
+        topic = (payload.get('topic') or '').strip().lower()
+
+        if topic not in ('biology', 'chemistry', 'physics'):
+            return jsonify(success=False, message='Invalid topic'), 400
+
+        # Ensure data structure exists
+        data = load_prompt_data()
+        if 'science_survey' not in data:
+            data['science_survey'] = []
+
+        user_obj = getattr(g, 'current_user', None)
+        user_id = getattr(user_obj, 'uid', 'anonymous') if user_obj else 'anonymous'
+        user_name = getattr(user_obj, 'name', user_id) if user_obj else 'Anonymous'
+
+        entry = {
+            'topic': topic,
+            'user_id': user_id,
+            'user_name': user_name,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+        data['science_survey'].append(entry)
+        save_prompt_data(data)
+
+        # Return a redirect URL which the frontend can follow
+        redirect_map = {
+            'biology': '/science/problems?topic=biology',
+            'chemistry': '/science/problems?topic=chemistry',
+            'physics': '/science/problems?topic=physics'
+        }
+
+        return jsonify(success=True, redirectUrl=redirect_map[topic]), 200
+
+    except Exception as e:
+        current_app.logger.exception('Error saving survey')
+        return jsonify(success=False, error=str(e)), 500
+
+# Create a separate blueprint to serve science questions at /api/science/questions
+science_api = Blueprint('science_api', __name__, url_prefix='/api/science')
+
+def _make_options_for_question(question_text, topic):
+    """
+    Build 4 prompt-options for a question:
+      - One 'good' prompt: process/understanding-driven (requests step-by-step, explanations)
+      - Three 'wrong' prompts: answer-driven (seek the final answer or short fact)
+    Prompts are written to be similar in length.
+    Returns (options_list, correct_index)
+    """
+    # Good prompt (process-focused)
+    good = f"Explain step-by-step how to answer this: {question_text} Include the reasoning behind each step and why the result follows."
+
+    # Wrong prompts (answer-focused); keep similar length to good prompt
+    wrong1 = f"Give the direct answer to: {question_text} Provide the final result and a short statement only."
+    wrong2 = f"State the main fact that answers: {question_text} Keep the response concise and focus on the conclusion."
+    wrong3 = f"List the key result for: {question_text} Provide the single best answer without extra explanation."
+
+    options = [good, wrong1, wrong2, wrong3]
+
+    # Shuffle options but keep track of correct_index
+    combined = list(enumerate(options))  # (index, text)
+    random.shuffle(combined)
+    shuffled_options = [text for (i, text) in combined]
+    # find where original good prompt ended up
+    correct_index = shuffled_options.index(good)
+
+    return shuffled_options, correct_index
+
+def generate_science_questions(topic):
+    """
+    Returns a list of 3 question dicts for the given topic.
+    Each question dict includes:
+      { id, category, question, prompt_template, answer, options, correct_index }
+    """
+    topic = topic.lower()
+    banks = {
+        'biology': [
+            {
+                'question': 'Describe the process of cellular respiration and name where it occurs.'
+            },
+            {
+                'question': 'Explain the role of DNA in heredity and how it is replicated.'
+            },
+            {
+                'question': 'What are the main differences between prokaryotic and eukaryotic cells?'
+            }
+        ],
+        'chemistry': [
+            {
+                'question': 'Explain the difference between ionic and covalent bonding.'
+            },
+            {
+                'question': 'What is pH and how does it relate to H+ concentration?'
+            },
+            {
+                'question': "Describe what a chemical reaction's activation energy is."
+            }
+        ],
+        'physics': [
+            {
+                'question': "State Newton's three laws of motion and give a short example for each."
+            },
+            {
+                'question': 'Explain the difference between kinetic and potential energy.'
+            },
+            {
+                'question': "What is Ohm's law and what does it relate?"
+            }
+        ]
+    }
+
+    selected_bank = banks.get(topic, banks['biology'])[:3]
+
+    questions = []
+    for q in selected_bank:
+        opts, correct_idx = _make_options_for_question(q['question'], topic)
+        # The answer is the good prompt (the one that teaches process-understanding)
+        good_prompt = opts[correct_idx]
+        question_obj = {
+            'id': random.randint(100000, 999999),
+            'category': topic,
+            'question': q['question'],
+            'prompt_template': f'Answer the following question step-by-step: {{question}}',
+            'answer': good_prompt,            # the good AI prompt (process-understanding-driven)
+            'options': opts,                  # list of 4 prompts (shuffled); one is 'good'
+            'correct_index': correct_idx      # index into options which is the good prompt
+        }
+        questions.append(question_obj)
+
+    return questions
+
+@science_api.route('/questions', methods=['GET'])
+def get_science_questions():
+    """
+    Returns 3 science questions.
+    Query: ?topic=biology|chemistry|physics
+    Response example:
+      { success: True, questions: [ {id, category, question, prompt_template, answer, options, correct_index}, ... ] }
+    """
+    try:
+        topic = request.args.get('topic', '').strip().lower()
+        if topic not in ('biology', 'chemistry', 'physics'):
+            topic = 'biology'
+
+        questions = generate_science_questions(topic)
+        return jsonify(success=True, questions=questions), 200
+
+    except Exception as e:
+        current_app.logger.exception('Error generating science questions')
+        return jsonify(success=False, error=str(e)), 500
 def generate_simulated_response(prompt, prompt_type):
     """Generate AI response using Gemini API"""
     from __init__ import app
