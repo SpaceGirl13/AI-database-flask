@@ -1,0 +1,304 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "type": "multiple_choice",
+      "subject": "math",
+      "scenario": "You need help solving a quadratic equation but want a detailed explanation.",
+      "options": [
+        {
+          "text": "Help with math homework",
+          "isCorrect": false,
+          "explanation": "Way too vague - no specific problem or context."
+        },
+        {
+          "text": "Solve 2x² + 5x - 3 = 0 step-by-step using the quadratic formula. Then verify the solutions by substituting them back into the original equation.",
+          "isCorrect": true,
+          "explanation": "More rigorous: asks for the method, step-by-step explanation, AND verification."
+        },
+        {
+          "text": "solve equation",
+          "isCorrect": false,
+          "explanation": "Too vague - which equation? What method?"
+        },
+        {
+          "text": "Solve 2x² + 5x - 3 = 0",
+          "isCorrect": false,
+          "explanation": "Missing request for explanation, method, or verification."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "multiple_choice",
+      "subject": "cs",
+      "scenario": "You need to learn about Python loops for beginners",
+      "options": [
+        {
+          "text": "How do loops work in Python?",
+          "isCorrect": false,
+          "explanation": "Too broad - needs specific types and examples."
+        },
+        {
+          "text": "python loops",
+          "isCorrect": false,
+          "explanation": "Too vague - which type? What level?"
+        },
+        {
+          "text": "Explain Python for loops and while loops to a beginner. Include syntax, common mistakes beginners make, and 2 commented examples for each loop type.",
+          "isCorrect": true,
+          "explanation": "Slightly harder: adds common mistakes and requires commented examples."
+        },
+        {
+          "text": "Teach me about for loops",
+          "isCorrect": false,
+          "explanation": "Missing language, level, and comparison with while loops."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "drag_drop",
+      "subject": "science",
+      "scenario": "Arrange these elements to create the BEST prompt for understanding photosynthesis:",
+      "items": [
+        {
+          "id": "a",
+          "text": "Explain photosynthesis",
+          "order": 1
+        },
+        {
+          "id": "b",
+          "text": "in simple terms for a high school student",
+          "order": 2
+        },
+        {
+          "id": "c",
+          "text": "Include the chemical equation, main steps, and the role of chlorophyll",
+          "order": 3
+        },
+        {
+          "id": "d",
+          "text": "Use everyday analogies to make it clear",
+          "order": 4
+        }
+      ],
+      "correctOrder": [ "a", "b", "c", "d" ],
+      "explanation": "Adds a bit more detail (role of chlorophyll) for a slightly more advanced prompt."
+    },
+    {
+      "id": 4,
+      "type": "drag_drop",
+      "subject": "history",
+      "scenario": "Arrange these to build an effective prompt for analyzing a historical document:",
+      "items": [
+        {
+          "id": "a",
+          "text": "Analyze the Declaration of Independence",
+          "order": 1
+        },
+        {
+          "id": "b",
+          "text": "focusing on the grievances against King George III",
+          "order": 2
+        },
+        {
+          "id": "c",
+          "text": "Explain their historical significance and provide contextual examples",
+          "order": 3
+        },
+        {
+          "id": "d",
+          "text": "and discuss how they justified revolution",
+          "order": 4
+        }
+      ],
+      "correctOrder": [ "a", "b", "c", "d" ],
+      "explanation": "Adds request for contextual examples, making it slightly more advanced."
+    },
+    {
+      "id": 5,
+      "type": "ethics",
+      "scenario": "Your teacher assigned an essay where you must develop your own original argument about climate change.",
+      "question": "How should you use AI for this assignment?",
+      "options": [
+        {
+          "text": "Ask AI to write the entire essay for you",
+          "isCorrect": false,
+          "category": "plagiarism",
+          "explanation": "This is plagiarism. The assignment requires YOUR original thinking."
+        },
+        {
+          "text": "Use AI to brainstorm multiple viewpoints and gather reliable sources, then create your own argument and outline before writing the essay yourself.",
+          "isCorrect": true,
+          "category": "appropriate",
+          "explanation": "Slightly more advanced: includes research and outlining responsibly."
+        },
+        {
+          "text": "Copy AI-generated paragraphs and change a few words",
+          "isCorrect": false,
+          "category": "plagiarism",
+          "explanation": "Still plagiarism. Paraphrasing AI content without original thinking violates academic integrity."
+        },
+        {
+          "text": "Never use AI at all for any school assignment",
+          "isCorrect": false,
+          "category": "too_strict",
+          "explanation": "AI can be a valuable learning tool when used ethically."
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "ethics",
+      "scenario": "You are stuck on a difficult math problem and do not understand the concept.",
+      "question": "What is the BEST way to use AI?",
+      "options": [
+        {
+          "text": "Copy the AI-generated answer without understanding it",
+          "isCorrect": false,
+          "category": "shortcuts",
+          "explanation": "You will not learn anything this way."
+        },
+        {
+          "text": "Ask AI to explain the underlying concept, walk through a similar example, then attempt the original problem yourself before checking with AI.",
+          "isCorrect": true,
+          "category": "learning",
+          "explanation": "Slightly harder: emphasizes learning with a similar example first."
+        },
+        {
+          "text": "Have AI solve all your homework problems",
+          "isCorrect": false,
+          "category": "dependency",
+          "explanation": "This prevents learning."
+        },
+        {
+          "text": "Avoid asking for help entirely",
+          "isCorrect": false,
+          "category": "too_strict",
+          "explanation": "Seeking help is important!"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "ethics",
+      "scenario": "You are working on a group coding project and one teammate is not contributing.",
+      "question": "How should your team use AI?",
+      "options": [
+        {
+          "text": "Use AI to write all the code so the lazy teammate does not matter",
+          "isCorrect": false,
+          "category": "shortcuts",
+          "explanation": "This defeats the purpose of learning."
+        },
+        {
+          "text": "Use AI to help the struggling teammate understand the project structure and key concepts, then collaborate to write the code yourselves.",
+          "isCorrect": true,
+          "category": "collaboration",
+          "explanation": "Slightly more advanced: emphasizes teaching and collaboration, not just understanding."
+        },
+        {
+          "text": "Have AI generate different parts of the code and each person claims one",
+          "isCorrect": false,
+          "category": "plagiarism",
+          "explanation": "This is academic dishonesty."
+        },
+        {
+          "text": "Do not use AI at all to make it fair",
+          "isCorrect": false,
+          "category": "too_strict",
+          "explanation": "Ethical AI use can support learning."
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "multiple_choice",
+      "subject": "science",
+      "scenario": "You need to compare mitosis and meiosis for your biology essay",
+      "options": [
+        {
+          "text": "mitosis vs meiosis",
+          "isCorrect": false,
+          "explanation": "Too vague."
+        },
+        {
+          "text": "Explain the difference between mitosis and meiosis",
+          "isCorrect": false,
+          "explanation": "Missing specific comparison points."
+        },
+        {
+          "text": "Create a comparison table of mitosis and meiosis including: number of divisions, chromosome behavior, genetic variation, and biological purpose. Add a short paragraph explaining how these differences contribute to evolution.",
+          "isCorrect": true,
+          "explanation": "Slightly harder: includes chromosome behavior + evolutionary significance."
+        },
+        {
+          "text": "Compare cell division",
+          "isCorrect": false,
+          "explanation": "Too broad."
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "multiple_choice",
+      "subject": "history",
+      "scenario": "You need to write an essay on the causes of World War I",
+      "options": [
+        {
+          "text": "Why did World War I start?",
+          "isCorrect": false,
+          "explanation": "Too broad."
+        },
+        {
+          "text": "List and explain the 4 main causes of World War I (MAIN: Militarism, Alliances, Imperialism, Nationalism). For each cause, include 2–3 historical examples and explain how they interacted to escalate tensions.",
+          "isCorrect": true,
+          "explanation": "Slightly harder: requires explaining interaction between causes."
+        },
+        {
+          "text": "world war 1 causes",
+          "isCorrect": false,
+          "explanation": "Too vague."
+        },
+        {
+          "text": "Explain what caused WW1",
+          "isCorrect": false,
+          "explanation": "Missing structure and depth."
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "ethics",
+      "scenario": "You have a final exam tomorrow and have not studied. You have access to AI during the exam.",
+      "question": "What should you do?",
+      "options": [
+        {
+          "text": "Use AI to answer all the exam questions",
+          "isCorrect": false,
+          "category": "cheating",
+          "explanation": "This is cheating."
+        },
+        {
+          "text": "Do not use AI during the exam, but use it tonight to review key concepts, generate practice questions, and test yourself.",
+          "isCorrect": true,
+          "category": "ethical",
+          "explanation": "Slightly harder: includes actively using AI to practice, not just review."
+        },
+        {
+          "text": "Use AI for just the hard questions you do not know",
+          "isCorrect": false,
+          "category": "cheating",
+          "explanation": "Still cheating."
+        },
+        {
+          "text": "Tell the teacher you want to reschedule because you did not study",
+          "isCorrect": false,
+          "category": "avoidance",
+          "explanation": "Better than cheating, but studying with AI is the better choice."
+        }
+      ]
+    }
+  ]
+}
