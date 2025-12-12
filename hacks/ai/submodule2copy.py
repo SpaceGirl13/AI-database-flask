@@ -23,7 +23,8 @@ def _ensure_data_file():
             'prompt_history': [], 
             'stats': {'total_prompts': 0, 'good_prompts': 0, 'bad_prompts': 0}, 
             'science_survey': [], 
-            'science_results': []
+            'science_results': [],
+            'math_survey': []
         }
         with open(DATA_FILE, 'w') as f:
             json.dump(initial, f, indent=2)
@@ -39,7 +40,8 @@ def load_prompt_data():
         'prompt_history': [], 
         'stats': {'total_prompts': 0, 'good_prompts': 0, 'bad_prompts': 0}, 
         'science_survey': [], 
-        'science_results': []
+        'science_results': [],
+        'math_survey': []
     }
 
 def save_prompt_data(data):
@@ -48,6 +50,7 @@ def save_prompt_data(data):
     data.setdefault('stats', {'total_prompts': 0, 'good_prompts': 0, 'bad_prompts': 0})
     data.setdefault('science_survey', [])
     data.setdefault('science_results', [])
+    data.setdefault('math_survey', [])
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
@@ -205,40 +208,193 @@ def submit_science_survey():
         data['science_survey'].append(entry)
         save_prompt_data(data)
 
-        return jsonify(success=True, topic=topic), 200
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'message': f"Saved survey selection for {topic}."
+        }), 200
 
     except Exception as e:
         current_app.logger.exception('Error saving survey')
+        return jsonify(success=False, error=str(e)), 500
+
+# Math API Blueprint
+math_api = Blueprint('math_api', __name__, url_prefix='/api/math')
+
+def generate_math_questions(topic):
+    """Generate 6 questions for the selected math topic"""
+    topic = topic.lower()
+    
+    banks = {
+        'derivatives': [
+            {
+                'question': 'Find the derivative of f(x) = 3x⁴ - 2x³ + 5x - 7',
+                'answer': "f'(x) = 12x³ - 6x² + 5"
+            },
+            {
+                'question': 'Find the derivative of f(x) = (2x + 1)(x² - 3)',
+                'answer': "f'(x) = 2(x² - 3) + (2x + 1)(2x) = 6x² + 2x - 6"
+            },
+            {
+                'question': 'Find the derivative of f(x) = sin(x) + cos(x)',
+                'answer': "f'(x) = cos(x) - sin(x)"
+            },
+            {
+                'question': 'Find the derivative of f(x) = e^(2x)',
+                'answer': "f'(x) = 2e^(2x) using the chain rule"
+            },
+            {
+                'question': 'Find the derivative of f(x) = ln(x²)',
+                'answer': "f'(x) = 2/x using the chain rule"
+            },
+            {
+                'question': 'Find the derivative of f(x) = x³/x²',
+                'answer': "First simplify to f(x) = x, then f'(x) = 1"
+            }
+        ],
+        'fractions': [
+            {
+                'question': 'Add: 2/3 + 1/4',
+                'answer': '8/12 + 3/12 = 11/12'
+            },
+            {
+                'question': 'Subtract: 5/6 - 1/3',
+                'answer': '5/6 - 2/6 = 3/6 = 1/2'
+            },
+            {
+                'question': 'Multiply: 3/4 × 2/5',
+                'answer': '6/20 = 3/10'
+            },
+            {
+                'question': 'Divide: 2/3 ÷ 4/5',
+                'answer': '2/3 × 5/4 = 10/12 = 5/6'
+            },
+            {
+                'question': 'Simplify: 12/18',
+                'answer': '2/3 (divide both by GCD of 6)'
+            },
+            {
+                'question': 'Convert to mixed number: 11/4',
+                'answer': '2 3/4'
+            }
+        ],
+        'trig': [
+            {
+                'question': 'Find sin(30°)',
+                'answer': '1/2'
+            },
+            {
+                'question': 'Find cos(60°)',
+                'answer': '1/2'
+            },
+            {
+                'question': 'Find tan(45°)',
+                'answer': '1'
+            },
+            {
+                'question': 'If sin(θ) = 3/5, find cos(θ) in a right triangle',
+                'answer': 'cos(θ) = 4/5 using Pythagorean theorem'
+            },
+            {
+                'question': 'Simplify: sin²(x) + cos²(x)',
+                'answer': '1 (Pythagorean identity)'
+            },
+            {
+                'question': 'Find the period of y = sin(2x)',
+                'answer': 'π (period is 2π/2 = π)'
+            }
+        ]
+    }
+
+    selected_bank = banks.get(topic, banks['derivatives'])
+    questions = []
+    
+    for q in selected_bank:
+        question_obj = {
+            'id': random.randint(100000, 999999),
+            'category': topic,
+            'question': q['question'],
+            'prompt_template': 'Solve this step-by-step, showing all work and explaining each step: {question}',
+            'answer': q['answer']
+        }
+        questions.append(question_obj)
+
+    return questions
+
+@math_api.route('/questions', methods=['GET'])
+def get_math_questions():
+    """Get 6 math questions for selected topic"""
+    try:
+        topic = request.args.get('topic', '').strip().lower()
+        if topic not in ('derivatives', 'fractions', 'trig'):
+            topic = 'derivatives'
+
+        questions = generate_math_questions(topic)
+        return jsonify(success=True, questions=questions), 200
+
+    except Exception as e:
+        current_app.logger.exception('Error generating math questions')
+        return jsonify(success=False, error=str(e)), 500
+
+@math_api.route('/survey', methods=['POST'])
+@optional_token()
+def submit_math_survey():
+    """Store math topic selection"""
+    try:
+        payload = request.get_json() or {}
+        topic = (payload.get('topic') or '').strip().lower()
+
+        if topic not in ('derivatives', 'fractions', 'trig'):
+            return jsonify(success=False, message='Invalid topic'), 400
+
+        data = load_prompt_data()
+        if 'math_survey' not in data:
+            data['math_survey'] = []
+
+        user_obj = getattr(g, 'current_user', None)
+        user_id = getattr(user_obj, 'uid', 'anonymous') if user_obj else 'anonymous'
+        user_name = getattr(user_obj, 'name', user_id) if user_obj else 'Anonymous'
+
+        entry = {
+            'topic': topic,
+            'user_id': user_id,
+            'user_name': user_name,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+        data['math_survey'].append(entry)
+        save_prompt_data(data)
+
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'message': f"Saved survey selection for {topic}."
+        }), 200
+
+    except Exception as e:
+        current_app.logger.exception('Error saving math survey')
         return jsonify(success=False, error=str(e)), 500
 
 # Science API Blueprint
 science_api = Blueprint('science_api', __name__, url_prefix='/api/science')
 
 def generate_science_questions(topic):
-    """Generate 6 questions for the selected topic"""
+    """Generate 4 high school level questions for the selected topic"""
     topic = topic.lower()
     
     banks = {
         'biology': [
             {
-                'question': 'Describe the process of cellular respiration and name where it occurs.',
-                'answer': 'Cellular respiration occurs in the mitochondria and involves glycolysis, the Krebs cycle, and the electron transport chain to produce ATP from glucose.'
-            },
-            {
-                'question': 'Explain the role of DNA in heredity and how it is replicated.',
-                'answer': 'DNA contains genetic information passed from parents to offspring. It replicates through semi-conservative replication where each strand serves as a template.'
-            },
-            {
-                'question': 'What are the main differences between prokaryotic and eukaryotic cells?',
-                'answer': 'Prokaryotic cells lack a nucleus and membrane-bound organelles, while eukaryotic cells have both. Prokaryotes are typically smaller and simpler.'
-            },
-            {
                 'question': 'Explain the process of photosynthesis including the light and dark reactions.',
                 'answer': 'Photosynthesis converts light energy into chemical energy. Light reactions in thylakoids produce ATP and NADPH, while dark reactions (Calvin cycle) use these to fix CO2 into glucose.'
             },
             {
-                'question': 'Describe how enzymes work and what factors affect their activity.',
-                'answer': 'Enzymes are biological catalysts that lower activation energy. Their activity is affected by temperature, pH, substrate concentration, and inhibitors.'
+                'question': 'Describe the process of cellular respiration and name where it occurs.',
+                'answer': 'Cellular respiration occurs in the mitochondria and involves glycolysis, the Krebs cycle, and the electron transport chain to produce ATP from glucose.'
+            },
+            {
+                'question': 'What are the main differences between prokaryotic and eukaryotic cells?',
+                'answer': 'Prokaryotic cells lack a nucleus and membrane-bound organelles, while eukaryotic cells have both. Prokaryotes are typically smaller and simpler.'
             },
             {
                 'question': 'Explain the difference between mitosis and meiosis.',
@@ -255,20 +411,12 @@ def generate_science_questions(topic):
                 'answer': 'pH is a measure of acidity/basicity. It is the negative logarithm of H+ concentration. Lower pH means higher H+ concentration (acidic), higher pH means lower H+ (basic).'
             },
             {
-                'question': "Describe what a chemical reaction's activation energy is.",
-                'answer': 'Activation energy is the minimum energy required for reactants to overcome the energy barrier and form products. Catalysts lower activation energy.'
-            },
-            {
                 'question': 'Explain the difference between exothermic and endothermic reactions.',
                 'answer': 'Exothermic reactions release energy to surroundings (negative ΔH), while endothermic reactions absorb energy from surroundings (positive ΔH).'
             },
             {
                 'question': 'What are the different types of chemical reactions and give an example of each.',
                 'answer': 'Main types: synthesis (A+B→AB), decomposition (AB→A+B), single replacement (A+BC→AC+B), double replacement (AB+CD→AD+CB), and combustion (fuel+O2→CO2+H2O).'
-            },
-            {
-                'question': 'Explain the concept of molarity and how to calculate it.',
-                'answer': 'Molarity (M) is concentration expressed as moles of solute per liter of solution. M = moles of solute / liters of solution. It is used in stoichiometry calculations.'
             }
         ],
         'physics': [
@@ -287,14 +435,6 @@ def generate_science_questions(topic):
             {
                 'question': 'Explain the difference between speed, velocity, and acceleration.',
                 'answer': 'Speed is scalar (magnitude only). Velocity is vector (magnitude and direction). Acceleration is rate of change of velocity, also a vector.'
-            },
-            {
-                'question': 'Describe the different forms of energy and the law of conservation of energy.',
-                'answer': 'Forms include kinetic, potential, thermal, chemical, electrical, and nuclear. Energy cannot be created or destroyed, only converted between forms (1st law of thermodynamics).'
-            },
-            {
-                'question': 'Explain the difference between series and parallel circuits.',
-                'answer': 'Series circuits have one path (current same throughout, voltages add). Parallel circuits have multiple paths (voltage same, currents add). Each has different resistance calculations.'
             }
         ]
     }
@@ -307,7 +447,7 @@ def generate_science_questions(topic):
             'id': random.randint(100000, 999999),
             'category': topic,
             'question': q['question'],
-            'prompt_template': f'Answer the following question step-by-step with detailed explanations: {{question}}',
+            'prompt_template': 'Explain the following to a high school student with clear examples and step-by-step reasoning: {question}',
             'answer': q['answer']
         }
         questions.append(question_obj)
@@ -316,7 +456,7 @@ def generate_science_questions(topic):
 
 @science_api.route('/questions', methods=['GET'])
 def get_science_questions():
-    """Get 6 science questions for selected topic"""
+    """Get 4 science questions for selected topic"""
     try:
         topic = request.args.get('topic', '').strip().lower()
         if topic not in ('biology', 'chemistry', 'physics'):
