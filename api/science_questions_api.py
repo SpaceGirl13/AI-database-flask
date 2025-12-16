@@ -58,12 +58,31 @@ def save_questions(data):
 
 @science_questions_api.route('/questions', methods=['GET'])
 def get_questions():
-    """Get all science questions"""
+    """Get all science questions, optionally filtered by topic"""
     try:
         questions_data = load_questions()
+        topic = request.args.get('topic')
+
+        print(f"[SCIENCE API] Received topic parameter: {topic}")
+        print(f"[SCIENCE API] Request args: {request.args}")
+
+        questions = questions_data['questions']
+        print(f"[SCIENCE API] Total questions before filter: {len(questions)}")
+
+        # Filter by topic if provided
+        if topic:
+            questions = [q for q in questions if q.get('category') == topic]
+            print(f"[SCIENCE API] Questions after filtering by '{topic}': {len(questions)}")
+
         return jsonify({
             'success': True,
-            'questions': questions_data['questions']
+            'questions': questions,
+            'debug_info': {
+                'version': 'v2_with_filter',
+                'topic_param': topic,
+                'total_before_filter': len(questions_data['questions']),
+                'total_after_filter': len(questions)
+            }
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

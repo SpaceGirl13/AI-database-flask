@@ -1,0 +1,115 @@
+{
+  "fill_in_blank": [
+    {
+      "id": 1,
+      "language": "python",
+      "title": "Complete the For Loop",
+      "description": "Fill in the blanks to create a loop that prints numbers 1 through 5",
+      "code_template": "for i in {{blank1}}:\n    print({{blank2}})",
+      "blanks": {
+        "blank1": {
+          "options": ["range(5)", "range(1, 6)", "range(0, 5)", "range(1, 5)"],
+          "correct": "range(1, 6)"
+        },
+        "blank2": {
+          "options": ["i", "i + 1", "range", "5"],
+          "correct": "i"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "language": "python",
+      "title": "Complete the Function",
+      "description": "Fill in the blanks to create a function that adds two numbers",
+      "code_template": "def add_numbers(a, b):\n    {{blank1}} a {{blank2}} b",
+      "blanks": {
+        "blank1": {
+          "options": ["return", "print", "result =", "output"],
+          "correct": "return"
+        },
+        "blank2": {
+          "options": ["+", "-", "*", "/"],
+          "correct": "+"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "language": "javascript",
+      "title": "Complete the Array Method",
+      "description": "Fill in the blanks to get the length of an array",
+      "code_template": "const fruits = ['apple', 'banana', 'orange'];\nconsole.log(fruits.{{blank1}});",
+      "blanks": {
+        "blank1": {
+          "options": ["length", "size", "count", "len"],
+          "correct": "length"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "language": "javascript",
+      "title": "Complete the Function",
+      "description": "Fill in the blanks to create a greeting function",
+      "code_template": "function greet(name) {\n    {{blank1}} 'Hello, ' {{blank2}} name;\n}\nconsole.log(greet('Alice'));",
+      "blanks": {
+        "blank1": {
+          "options": ["return", "print", "console.log", "output"],
+          "correct": "return"
+        },
+        "blank2": {
+          "options": ["+", "-", "&", "||"],
+          "correct": "+"
+        }
+      }
+    }
+  ],
+  "write_code": [
+    {
+      "id": 1,
+      "language": "python",
+      "title": "Sum Two Numbers",
+      "description": "Write a function called 'sum_numbers' that takes two numbers as parameters and returns their sum. Then test it with sum_numbers(10, 5).",
+      "expected_output": "15",
+      "hint": "Use the + operator to add the numbers, and make sure to print the result of calling the function.",
+      "solution": "def sum_numbers(a, b):\n    return a + b\n\nprint(sum_numbers(10, 5))"
+    },
+    {
+      "id": 2,
+      "language": "python",
+      "title": "Print Even Numbers",
+      "description": "Write code that prints all even numbers from 2 to 10 (one number per line).",
+      "expected_output": "2\n4\n6\n8\n10",
+      "hint": "Use a for loop with range() and check if each number is divisible by 2 using the modulo operator (%).",
+      "solution": "for i in range(2, 11):\n    if i % 2 == 0:\n        print(i)"
+    },
+    {
+      "id": 3,
+      "language": "python",
+      "title": "Find Maximum",
+      "description": "Write a function called 'find_max' that takes a list of numbers and returns the largest number. Test it with find_max([3, 7, 2, 9, 1]).",
+      "expected_output": "9",
+      "hint": "You can use Python's built-in max() function or write a loop to find the largest number.",
+      "solution": "def find_max(numbers):\n    return max(numbers)\n\nprint(find_max([3, 7, 2, 9, 1]))"
+    },
+    {
+      "id": 4,
+      "language": "javascript",
+      "title": "Multiply Numbers",
+      "description": "Write a function called 'multiply' that takes two numbers and returns their product. Then test it with multiply(6, 7).",
+      "expected_output": "42",
+      "hint": "Use the * operator to multiply the numbers, and don't forget to console.log the result.",
+      "solution": "function multiply(a, b) {\n    return a * b;\n}\n\nconsole.log(multiply(6, 7));"
+    },
+    {
+      "id": 5,
+      "language": "javascript",
+      "title": "Count to Five",
+      "description": "Write code that uses a for loop to print numbers from 1 to 5 (one number per line).",
+      "expected_output": "1\n2\n3\n4\n5",
+      "hint": "Use a for loop with a counter variable. Remember JavaScript for loops: for(let i = 1; i <= 5; i++)",
+      "solution": "for (let i = 1; i <= 5; i++) {\n    console.log(i);\n}"
+    }
+  ]
+}

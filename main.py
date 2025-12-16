@@ -34,6 +34,7 @@ from hacks.ai.submodule3 import game_api  # Import the prompt challenge game API
 from api.submodule3_feedback_api import submodule3_feedback_api  # Import submodule 3 feedback API
 from api.math_questions_api import math_questions_api  # Import math questions API
 from api.science_questions_api import science_questions_api  # Import science questions API
+from api.coding_questions_api import coding_questions_api  # Import coding questions API
 #from api.announcement import announcement_api ##temporary revert
 
 # database Initialization functions
@@ -93,6 +94,7 @@ app.register_blueprint(game_api, url_prefix='/api/prompt-game')  # Register the 
 app.register_blueprint(submodule3_feedback_api, url_prefix='/api/submodule3')  # Register submodule 3 feedback API
 app.register_blueprint(math_questions_api, url_prefix='/api/math')  # Register math questions API
 app.register_blueprint(science_questions_api, url_prefix='/api/science')  # Register science questions API
+app.register_blueprint(coding_questions_api, url_prefix='/api/coding')  # Register coding questions API
 # app.register_blueprint(announcement_api) ##temporary revert
 
 # Jokes file initialization
