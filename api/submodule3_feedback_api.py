@@ -83,4 +83,4 @@ def get_recent_feedback():
         }), 200
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 500 
