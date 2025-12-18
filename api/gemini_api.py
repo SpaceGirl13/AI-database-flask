@@ -20,10 +20,60 @@ from __init__ import app
 from flask import Blueprint, request, jsonify, current_app, g
 from flask_restful import Api, Resource
 import requests
+import re
 from api.jwt_authorize import token_required
 
 gemini_api = Blueprint('gemini_api', __name__, url_prefix='/api')
 api = Api(gemini_api)
+
+def markdown_to_plain_text(markdown_text):
+    """
+    Convert markdown formatted text to plain text by removing markdown syntax.
+
+    Args:
+        markdown_text: Text with markdown formatting
+
+    Returns:
+        Plain text without markdown formatting
+    """
+    text = markdown_text
+
+    # Remove code blocks (``` or `)
+    text = re.sub(r'```[\s\S]*?```', '', text)
+    text = re.sub(r'`([^`]+)`', r'\1', text)
+
+    # Remove headers (# ## ### etc)
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+
+    # Remove bold/italic (**text** or __text__ or *text* or _text_)
+    text = re.sub(r'\*\*([^\*]+)\*\*', r'\1', text)
+    text = re.sub(r'__([^_]+)__', r'\1', text)
+    text = re.sub(r'\*([^\*]+)\*', r'\1', text)
+    text = re.sub(r'_([^_]+)_', r'\1', text)
+
+    # Remove links [text](url)
+    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+
+    # Remove images ![alt](url)
+    text = re.sub(r'!\[([^\]]*)\]\([^\)]+\)', r'\1', text)
+
+    # Remove horizontal rules (--- or ***)
+    text = re.sub(r'^[\-\*]{3,}\s*$', '', text, flags=re.MULTILINE)
+
+    # Remove blockquotes (> )
+    text = re.sub(r'^>\s+', '', text, flags=re.MULTILINE)
+
+    # Remove list markers (- or * or 1. )
+    text = re.sub(r'^[\-\*\+]\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)
+
+    # Remove strikethrough (~~text~~)
+    text = re.sub(r'~~([^~]+)~~', r'\1', text)
+
+    # Clean up multiple blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    return text.strip()
 
 class GeminiAPI:
     class _Ask(Resource):
@@ -140,10 +190,12 @@ class GeminiAPI:
                 # Extract the generated text
                 try:
                     generated_text = result['candidates'][0]['content']['parts'][0]['text']
+                    # Convert markdown to plain text
+                    plain_text = markdown_to_plain_text(generated_text)
                     user_id = g.current_user.uid if hasattr(g, 'current_user') and g.current_user else 'anonymous'
                     return {
                         'success': True,
-                        'text': generated_text,
+                        'text': plain_text,
                         'user': user_id
                     }
                 except (KeyError, IndexError) as e:

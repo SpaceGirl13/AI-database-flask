@@ -74,6 +74,19 @@
         "undefined": null
       },
       "timestamp": "2025-12-08T14:32:10.837Z"
+    },
+    {
+      "playerName": "Anishka",
+      "score": 763,
+      "correctAnswers": 4,
+      "subjectScores": {
+        "math": 1,
+        "science": 1,
+        "history": 1,
+        "cs": 1,
+        "undefined": null
+      },
+      "timestamp": "2025-12-17T21:56:52.726Z"
     }
   ]
 }
