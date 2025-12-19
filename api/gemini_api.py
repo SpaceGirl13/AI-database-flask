@@ -29,6 +29,7 @@ api = Api(gemini_api)
 def markdown_to_plain_text(markdown_text):
     """
     Convert markdown formatted text to plain text by removing markdown syntax.
+    Preserves code blocks by extracting their content.
 
     Args:
         markdown_text: Text with markdown formatting
@@ -38,8 +39,16 @@ def markdown_to_plain_text(markdown_text):
     """
     text = markdown_text
 
-    # Remove code blocks (``` or `)
-    text = re.sub(r'```[\s\S]*?```', '', text)
+    # Extract code from code blocks (preserve code, just remove the markdown syntax)
+    # Match triple backtick code blocks and extract the code content
+    def replace_code_block(match):
+        # Extract everything after the language identifier and before the closing ```
+        code_content = match.group(1)
+        return code_content
+
+    text = re.sub(r'```(?:python|javascript|java|cpp|c|ruby|go|rust|swift|kotlin|php|sql|html|css|json|xml|yaml)?\n?([\s\S]*?)```', replace_code_block, text)
+
+    # Remove inline code backticks but keep the content
     text = re.sub(r'`([^`]+)`', r'\1', text)
 
     # Remove headers (# ## ### etc)
@@ -97,14 +106,17 @@ class GeminiAPI:
             """
             # current_user = g.current_user  # Removed - not needed without token_required
             body = request.get_json()
-            
+
             # Validate request body
             if not body:
                 return {'message': 'Request body is required'}, 400
-            
+
             text = body.get('text', '')
             if not text:
                 return {'message': 'Text field is required'}, 400
+
+            # Check if markdown conversion should be applied (default: True)
+            convert_markdown = body.get('convert_markdown', True)
             
             # Get configuration
             api_key = app.config.get('GEMINI_API_KEY')
@@ -190,12 +202,15 @@ class GeminiAPI:
                 # Extract the generated text
                 try:
                     generated_text = result['candidates'][0]['content']['parts'][0]['text']
-                    # Convert markdown to plain text
-                    plain_text = markdown_to_plain_text(generated_text)
+                    # Convert markdown to plain text if requested
+                    if convert_markdown:
+                        final_text = markdown_to_plain_text(generated_text)
+                    else:
+                        final_text = generated_text
                     user_id = g.current_user.uid if hasattr(g, 'current_user') and g.current_user else 'anonymous'
                     return {
                         'success': True,
-                        'text': plain_text,
+                        'text': final_text,
                         'user': user_id
                     }
                 except (KeyError, IndexError) as e:
