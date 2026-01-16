@@ -37,8 +37,11 @@ cors = CORS(
        'http://127.0.0.1:4600',
        'http://localhost:4000',
        'http://127.0.0.1:4000',
+       'http://localhost:4100',
+       'http://127.0.0.1:4100',
        'https://open-coding-society.github.io',
        'https://pages.opencodingsociety.com',
+       'https://spacegirl13.github.io',
    ],
    methods=["GET", "POST", "PUT", "OPTIONS"]
 )
