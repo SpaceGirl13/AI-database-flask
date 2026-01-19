@@ -3,6 +3,8 @@ from flask import Blueprint, request, jsonify
 import json
 import os
 from datetime import datetime
+from model.user import User
+from flask import g
 
 # Create Blueprint
 survey_api = Blueprint('survey_api', __name__)
