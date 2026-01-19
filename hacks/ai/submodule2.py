@@ -1,6 +1,5 @@
 # submodule2.py - Flask Blueprint for Prompt Engineering Module
 from flask import Blueprint, request, jsonify, current_app, g
-from badge_service import BadgeService
 from datetime import datetime
 import json
 import os
@@ -10,7 +9,6 @@ from api.jwt_authorize import optional_token
 
 # Create Blueprint
 prompt_api = Blueprint('prompt_api', __name__)
-badge_service = BadgeService()
 
 # Data file for storing prompt history
 DATA_FILE = 'instance/volumes/prompt_data.json'
