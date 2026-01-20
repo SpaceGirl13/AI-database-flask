@@ -7,6 +7,7 @@ import random
 import requests
 from api.jwt_authorize import optional_token, token_required
 from model.user import User
+from model.questions import Question
 
 # Create Blueprint
 prompt_api = Blueprint('prompt_api', __name__)
@@ -276,61 +277,27 @@ def _make_options_for_question(question_text, topic):
 
     return shuffled_options, correct_index
 
-def generate_science_questions(topic):
+def generate_science_questions(topic, count=3):
     """
-    Returns a list of 3 question dicts for the given topic.
+    Returns a list of question dicts for the given topic from the database.
     Each question dict includes:
       { id, category, question, prompt_template, answer, options, correct_index }
     """
     topic = topic.lower()
-    banks = {
-        'biology': [
-            {
-                'question': 'Describe the process of cellular respiration and name where it occurs.'
-            },
-            {
-                'question': 'Explain the role of DNA in heredity and how it is replicated.'
-            },
-            {
-                'question': 'What are the main differences between prokaryotic and eukaryotic cells?'
-            }
-        ],
-        'chemistry': [
-            {
-                'question': 'Explain the difference between ionic and covalent bonding.'
-            },
-            {
-                'question': 'What is pH and how does it relate to H+ concentration?'
-            },
-            {
-                'question': "Describe what a chemical reaction's activation energy is."
-            }
-        ],
-        'physics': [
-            {
-                'question': "State Newton's three laws of motion and give a short example for each."
-            },
-            {
-                'question': 'Explain the difference between kinetic and potential energy.'
-            },
-            {
-                'question': "What is Ohm's law and what does it relate?"
-            }
-        ]
-    }
 
-    selected_bank = banks.get(topic, banks['biology'])[:3]
+    # Get random questions from database
+    db_questions = Question.get_random_questions(count=count, subject='science', category=topic)
 
     questions = []
-    for q in selected_bank:
-        opts, correct_idx = _make_options_for_question(q['question'], topic)
+    for q in db_questions:
+        opts, correct_idx = _make_options_for_question(q.question, topic)
         # The answer is the good prompt (the one that teaches process-understanding)
         good_prompt = opts[correct_idx]
         question_obj = {
-            'id': random.randint(100000, 999999),
-            'category': topic,
-            'question': q['question'],
-            'prompt_template': f'Answer the following question step-by-step: {{question}}',
+            'id': q.id,
+            'category': q.category,
+            'question': q.question,
+            'prompt_template': q.prompt_template or f'Answer the following question step-by-step: {{question}}',
             'answer': good_prompt,            # the good AI prompt (process-understanding-driven)
             'options': opts,                  # list of 4 prompts (shuffled); one is 'good'
             'correct_index': correct_idx      # index into options which is the good prompt
@@ -342,22 +309,40 @@ def generate_science_questions(topic):
 @science_api.route('/questions', methods=['GET'])
 def get_science_questions():
     """
-    Returns 3 science questions.
-    Query: ?topic=biology|chemistry|physics
+    Returns random science questions from the database.
+    Query: ?topic=biology|chemistry|physics&count=3
     Response example:
       { success: True, questions: [ {id, category, question, prompt_template, answer, options, correct_index}, ... ] }
     """
     try:
         topic = request.args.get('topic', '').strip().lower()
+        count = request.args.get('count', 3, type=int)
+
         if topic not in ('biology', 'chemistry', 'physics'):
             topic = 'biology'
 
-        questions = generate_science_questions(topic)
+        print(f"[SCIENCE API] Topic: {topic}, Count: {count}")
+        questions = generate_science_questions(topic, count)
+        print(f"[SCIENCE API] Returning {len(questions)} questions")
+
         return jsonify(success=True, questions=questions), 200
 
     except Exception as e:
         current_app.logger.exception('Error generating science questions')
         return jsonify(success=False, error=str(e)), 500
+
+
+@science_api.route('/categories', methods=['GET'])
+def get_science_categories():
+    """Get all available science question categories"""
+    try:
+        categories = Question.get_categories(subject='science')
+        return jsonify({
+            'success': True,
+            'categories': categories
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 def generate_simulated_response(prompt, prompt_type):
     """Generate AI response using Gemini API"""

@@ -30,58 +30,226 @@
     },
     {
       "id": 5,
+      "question": "What is the derivative of x³ + 5x² - 7x + 2?",
+      "answer": "3x² + 10x - 7",
+      "prompt_template": "Find the derivative of {question}. Apply the power rule to each term and show your work.",
+      "category": "derivatives"
+    },
+    {
+      "id": 6,
+      "question": "Find the derivative of tan(x)",
+      "answer": "sec²(x)",
+      "prompt_template": "Calculate the derivative of {question}. Use the quotient rule with sin(x)/cos(x) and simplify.",
+      "category": "derivatives"
+    },
+    {
+      "id": 7,
+      "question": "What is the derivative of √x (square root of x)?",
+      "answer": "1/(2√x) or (1/2)x^(-1/2)",
+      "prompt_template": "Find the derivative of {question}. Rewrite as x^(1/2) and apply the power rule.",
+      "category": "derivatives"
+    },
+    {
+      "id": 8,
+      "question": "Find the derivative of 5e^x - 3x²",
+      "answer": "5e^x - 6x",
+      "prompt_template": "Calculate the derivative of {question}. Remember that the derivative of e^x is e^x.",
+      "category": "derivatives"
+    },
+    {
+      "id": 9,
+      "question": "What is the derivative of x⁵ - 4x³ + x?",
+      "answer": "5x⁴ - 12x² + 1",
+      "prompt_template": "Find the derivative of {question} using the power rule for each term.",
+      "category": "derivatives"
+    },
+    {
+      "id": 10,
+      "question": "Find the derivative of cos(2x)",
+      "answer": "-2sin(2x)",
+      "prompt_template": "Calculate the derivative of {question}. Apply the chain rule and show each step.",
+      "category": "derivatives"
+    },
+    {
+      "id": 11,
+      "question": "What is the derivative of 1/x?",
+      "answer": "-1/x² or -x^(-2)",
+      "prompt_template": "Find the derivative of {question}. Rewrite as x^(-1) and apply the power rule.",
+      "category": "derivatives"
+    },
+    {
+      "id": 12,
+      "question": "Find the derivative of x²·e^x using the product rule",
+      "answer": "2x·e^x + x²·e^x or e^x(2x + x²)",
+      "prompt_template": "Calculate the derivative of {question}. Apply the product rule: d/dx[f·g] = f'g + fg'.",
+      "category": "derivatives"
+    },
+    {
+      "id": 13,
       "question": "Simplify: (3/4) + (2/3)",
       "answer": "17/12 or 1 5/12",
       "prompt_template": "Solve {question}. Show all steps including finding the common denominator and simplifying.",
       "category": "fractions"
     },
     {
-      "id": 6,
+      "id": 14,
       "question": "What is (5/6) × (4/15)?",
       "answer": "2/9",
       "prompt_template": "Calculate {question} step-by-step. Show the multiplication and simplification process.",
       "category": "fractions"
     },
     {
-      "id": 7,
+      "id": 15,
       "question": "Divide: (3/8) ÷ (9/16)",
       "answer": "2/3",
       "prompt_template": "Solve {question}. Explain the process of dividing fractions using the reciprocal method.",
       "category": "fractions"
     },
     {
-      "id": 8,
+      "id": 16,
       "question": "Simplify: (2/5) - (1/3)",
       "answer": "1/15",
       "prompt_template": "Calculate {question}. Show how to find the common denominator and subtract the fractions.",
       "category": "fractions"
     },
     {
-      "id": 9,
+      "id": 17,
+      "question": "Add: (5/8) + (3/4)",
+      "answer": "11/8 or 1 3/8",
+      "prompt_template": "Solve {question}. Find the LCD and add the fractions step-by-step.",
+      "category": "fractions"
+    },
+    {
+      "id": 18,
+      "question": "Multiply: (7/9) × (3/14)",
+      "answer": "1/6",
+      "prompt_template": "Calculate {question}. Multiply numerators and denominators, then simplify by canceling common factors.",
+      "category": "fractions"
+    },
+    {
+      "id": 19,
+      "question": "Simplify: (4/5) ÷ (2/3)",
+      "answer": "6/5 or 1 1/5",
+      "prompt_template": "Solve {question}. Multiply by the reciprocal and simplify.",
+      "category": "fractions"
+    },
+    {
+      "id": 20,
+      "question": "Subtract: (7/12) - (1/4)",
+      "answer": "1/3",
+      "prompt_template": "Calculate {question}. Convert to a common denominator and subtract.",
+      "category": "fractions"
+    },
+    {
+      "id": 21,
+      "question": "Add: (1/6) + (2/9) + (1/3)",
+      "answer": "11/18",
+      "prompt_template": "Solve {question}. Find the LCD for all three fractions and add them together.",
+      "category": "fractions"
+    },
+    {
+      "id": 22,
+      "question": "Simplify: (15/20) to lowest terms",
+      "answer": "3/4",
+      "prompt_template": "Reduce {question}. Find the GCF of numerator and denominator and divide both by it.",
+      "category": "fractions"
+    },
+    {
+      "id": 23,
+      "question": "What is (2/3)² (two-thirds squared)?",
+      "answer": "4/9",
+      "prompt_template": "Calculate {question}. Square both the numerator and denominator.",
+      "category": "fractions"
+    },
+    {
+      "id": 24,
+      "question": "Divide: (5/6) ÷ (10/9)",
+      "answer": "3/4",
+      "prompt_template": "Solve {question}. Multiply by the reciprocal and simplify completely.",
+      "category": "fractions"
+    },
+    {
+      "id": 25,
       "question": "What is sin(30°)?",
       "answer": "1/2 or 0.5",
       "prompt_template": "Find {question}. Explain using the unit circle or special right triangles.",
       "category": "trig"
     },
     {
-      "id": 10,
+      "id": 26,
       "question": "Calculate cos(60°)",
       "answer": "1/2 or 0.5",
       "prompt_template": "Determine {question}. Use the unit circle and explain the relationship to the 30-60-90 triangle.",
       "category": "trig"
     },
     {
-      "id": 11,
+      "id": 27,
       "question": "What is tan(45°)?",
       "answer": "1",
       "prompt_template": "Find {question}. Explain using the definition of tangent and the 45-45-90 triangle.",
       "category": "trig"
     },
     {
-      "id": 12,
+      "id": 28,
       "question": "Simplify: sin²(x) + cos²(x)",
       "answer": "1",
       "prompt_template": "Simplify {question}. Explain the Pythagorean identity and its proof.",
+      "category": "trig"
+    },
+    {
+      "id": 29,
+      "question": "What is sin(90°)?",
+      "answer": "1",
+      "prompt_template": "Find {question}. Use the unit circle to explain why this equals 1.",
+      "category": "trig"
+    },
+    {
+      "id": 30,
+      "question": "Calculate cos(0°)",
+      "answer": "1",
+      "prompt_template": "Determine {question}. Explain using the unit circle starting position.",
+      "category": "trig"
+    },
+    {
+      "id": 31,
+      "question": "What is tan(60°)?",
+      "answer": "√3 or approximately 1.732",
+      "prompt_template": "Find {question}. Use sin(60°)/cos(60°) and simplify.",
+      "category": "trig"
+    },
+    {
+      "id": 32,
+      "question": "What is sin(45°)?",
+      "answer": "√2/2 or approximately 0.707",
+      "prompt_template": "Calculate {question}. Use the 45-45-90 triangle to derive this value.",
+      "category": "trig"
+    },
+    {
+      "id": 33,
+      "question": "Find cos(45°)",
+      "answer": "√2/2 or approximately 0.707",
+      "prompt_template": "Determine {question}. Explain why sin(45°) = cos(45°) using the unit circle.",
+      "category": "trig"
+    },
+    {
+      "id": 34,
+      "question": "What is tan(30°)?",
+      "answer": "√3/3 or 1/√3",
+      "prompt_template": "Calculate {question}. Use sin(30°)/cos(30°) and rationalize if needed.",
+      "category": "trig"
+    },
+    {
+      "id": 35,
+      "question": "What is cos(90°)?",
+      "answer": "0",
+      "prompt_template": "Find {question}. Use the unit circle to explain why the x-coordinate is 0 at 90°.",
+      "category": "trig"
+    },
+    {
+      "id": 36,
+      "question": "Simplify: 1 + tan²(x)",
+      "answer": "sec²(x)",
+      "prompt_template": "Simplify {question}. Use the Pythagorean identity and explain the relationship.",
       "category": "trig"
     }
   ]

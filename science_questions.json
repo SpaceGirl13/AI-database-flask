@@ -30,58 +30,226 @@
     },
     {
       "id": 5,
+      "question": "Explain how natural selection leads to evolution.",
+      "answer": "Natural selection occurs when organisms with favorable traits survive and reproduce more successfully, passing those traits to offspring. Over time, this leads to changes in populations.",
+      "prompt_template": "Explain {question} Include the concepts of variation, inheritance, selection pressure, and how this leads to adaptation over generations.",
+      "category": "biology"
+    },
+    {
+      "id": 6,
+      "question": "What is the role of enzymes in biological reactions?",
+      "answer": "Enzymes are biological catalysts that speed up chemical reactions by lowering activation energy. They are specific to substrates and work through the lock-and-key model.",
+      "prompt_template": "Explain {question} Describe how enzymes work, the lock-and-key model, and factors that affect enzyme activity.",
+      "category": "biology"
+    },
+    {
+      "id": 7,
+      "question": "Describe the stages of mitosis and their importance.",
+      "answer": "Mitosis has four stages: prophase, metaphase, anaphase, and telophase. It produces two identical daughter cells for growth, repair, and asexual reproduction.",
+      "prompt_template": "Explain {question} Describe what happens in each stage and why accurate chromosome division is important.",
+      "category": "biology"
+    },
+    {
+      "id": 8,
+      "question": "How does the circulatory system transport materials in the body?",
+      "answer": "The heart pumps blood through arteries, capillaries, and veins. Blood carries oxygen, nutrients, hormones, and waste products throughout the body.",
+      "prompt_template": "Explain {question} Include the roles of the heart, blood vessels, and blood components in transport.",
+      "category": "biology"
+    },
+    {
+      "id": 9,
+      "question": "What is cellular respiration and how does it produce energy?",
+      "answer": "Cellular respiration breaks down glucose using oxygen to produce ATP, carbon dioxide, and water. The equation is: C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + ATP",
+      "prompt_template": "Explain {question} Include the three main stages (glycolysis, Krebs cycle, electron transport chain) and where they occur.",
+      "category": "biology"
+    },
+    {
+      "id": 10,
+      "question": "Explain the difference between dominant and recessive alleles.",
+      "answer": "Dominant alleles mask recessive alleles in heterozygotes. An organism needs two copies of a recessive allele to express that trait, but only one dominant allele to express the dominant trait.",
+      "prompt_template": "Explain {question} Use Punnett squares to demonstrate inheritance patterns and give examples of dominant and recessive traits.",
+      "category": "biology"
+    },
+    {
+      "id": 11,
+      "question": "How do neurons transmit signals in the nervous system?",
+      "answer": "Neurons transmit electrical signals (action potentials) along their axons and chemical signals (neurotransmitters) across synapses to communicate with other neurons or cells.",
+      "prompt_template": "Explain {question} Describe the structure of a neuron, how action potentials work, and the role of neurotransmitters.",
+      "category": "biology"
+    },
+    {
+      "id": 12,
+      "question": "What is the immune system and how does it protect the body?",
+      "answer": "The immune system defends against pathogens using white blood cells, antibodies, and other mechanisms. It includes innate immunity (immediate) and adaptive immunity (specific, memory-based).",
+      "prompt_template": "Explain {question} Describe the roles of white blood cells, antibodies, and the difference between innate and adaptive immunity.",
+      "category": "biology"
+    },
+    {
+      "id": 13,
       "question": "What is Newton's Second Law of Motion?",
       "answer": "Force equals mass times acceleration (F = ma). The acceleration of an object depends on the net force acting on it and is inversely proportional to its mass.",
       "prompt_template": "Explain {question} Include the formula F = ma, provide real-world examples, and explain the relationship between force, mass, and acceleration step-by-step.",
       "category": "physics"
     },
     {
-      "id": 6,
+      "id": 14,
       "question": "Explain the difference between kinetic and potential energy.",
       "answer": "Kinetic energy is the energy of motion (KE = ½mv²), while potential energy is stored energy based on position or configuration (like gravitational PE = mgh).",
       "prompt_template": "Explain {question} Include the formulas for each type, provide examples of energy conversion, and explain the principle of conservation of energy.",
       "category": "physics"
     },
     {
-      "id": 7,
+      "id": 15,
       "question": "What are the three laws of thermodynamics?",
       "answer": "First Law: Energy cannot be created or destroyed. Second Law: Entropy always increases in an isolated system. Third Law: Absolute zero temperature cannot be reached.",
       "prompt_template": "Explain {question} Describe each law in detail with real-world applications and explain what entropy means.",
       "category": "physics"
     },
     {
-      "id": 8,
+      "id": 16,
       "question": "How does electricity flow in a circuit?",
       "answer": "Electric current flows from high to low potential (voltage) through a conductor. Electrons move through the circuit from negative to positive terminal, carrying energy.",
       "prompt_template": "Explain {question} Include Ohm's Law (V=IR), describe the relationship between voltage, current, and resistance, and explain series vs parallel circuits.",
       "category": "physics"
     },
     {
-      "id": 9,
+      "id": 17,
+      "question": "Explain Newton's First Law of Motion (Law of Inertia).",
+      "answer": "An object at rest stays at rest, and an object in motion stays in motion at constant velocity, unless acted upon by an unbalanced force.",
+      "prompt_template": "Explain {question} Provide everyday examples and explain the concept of inertia.",
+      "category": "physics"
+    },
+    {
+      "id": 18,
+      "question": "What is the relationship between wavelength, frequency, and wave speed?",
+      "answer": "Wave speed equals wavelength times frequency (v = λf). As frequency increases, wavelength decreases for a constant wave speed.",
+      "prompt_template": "Explain {question} Include the formula v = λf, explain each variable, and give examples using sound or light waves.",
+      "category": "physics"
+    },
+    {
+      "id": 19,
+      "question": "How do magnets and magnetic fields work?",
+      "answer": "Magnets have north and south poles that attract opposite poles and repel like poles. Magnetic fields are created by moving charges and exert forces on other magnets and currents.",
+      "prompt_template": "Explain {question} Describe magnetic poles, field lines, and the relationship between electricity and magnetism.",
+      "category": "physics"
+    },
+    {
+      "id": 20,
+      "question": "What is Newton's Third Law of Motion?",
+      "answer": "For every action, there is an equal and opposite reaction. When object A exerts a force on object B, object B exerts an equal force back on object A.",
+      "prompt_template": "Explain {question} Provide examples like walking, swimming, or rocket propulsion to illustrate action-reaction pairs.",
+      "category": "physics"
+    },
+    {
+      "id": 21,
+      "question": "Explain how gravity affects objects near Earth's surface.",
+      "answer": "Gravity accelerates all objects toward Earth at approximately 9.8 m/s² (g). The gravitational force on an object equals its mass times g (F = mg).",
+      "prompt_template": "Explain {question} Include the acceleration due to gravity, free fall, and how mass vs weight differ.",
+      "category": "physics"
+    },
+    {
+      "id": 22,
+      "question": "What is the difference between speed and velocity?",
+      "answer": "Speed is a scalar quantity (magnitude only), while velocity is a vector quantity (magnitude and direction). An object can have constant speed but changing velocity.",
+      "prompt_template": "Explain {question} Give examples showing how an object can change velocity while maintaining constant speed.",
+      "category": "physics"
+    },
+    {
+      "id": 23,
+      "question": "How does refraction of light occur?",
+      "answer": "Refraction occurs when light passes from one medium to another and changes speed, causing it to bend. This is described by Snell's Law: n₁sin(θ₁) = n₂sin(θ₂).",
+      "prompt_template": "Explain {question} Include Snell's Law, explain the index of refraction, and give examples like light in water or prisms.",
+      "category": "physics"
+    },
+    {
+      "id": 24,
+      "question": "What is momentum and how is it conserved?",
+      "answer": "Momentum is mass times velocity (p = mv). In a closed system, total momentum before a collision equals total momentum after (conservation of momentum).",
+      "prompt_template": "Explain {question} Include the formula p = mv, explain elastic vs inelastic collisions, and give real-world examples.",
+      "category": "physics"
+    },
+    {
+      "id": 25,
       "question": "What happens during a chemical reaction when vinegar and baking soda mix?",
       "answer": "An acid-base reaction occurs producing carbon dioxide gas (CO₂), water (H₂O), and sodium acetate. The chemical equation is: NaHCO₃ + CH₃COOH → CO₂ + H₂O + CH₃COONa",
       "prompt_template": "Explain {question} Include the chemical equation, identify the reactants and products, explain why bubbles form, and describe what type of reaction this is (acid-base reaction).",
       "category": "chemistry"
     },
     {
-      "id": 10,
+      "id": 26,
       "question": "What is the difference between ionic and covalent bonds?",
       "answer": "Ionic bonds form when electrons are transferred between atoms (usually metal + nonmetal), creating charged ions. Covalent bonds form when electrons are shared between atoms (usually nonmetals).",
       "prompt_template": "Explain {question} Describe how each bond forms, provide examples of compounds with each bond type, and explain the properties that result from each bonding type.",
       "category": "chemistry"
     },
     {
-      "id": 11,
+      "id": 27,
       "question": "Explain the pH scale and what makes a substance acidic or basic.",
       "answer": "The pH scale (0-14) measures acidity. pH < 7 is acidic (more H⁺ ions), pH = 7 is neutral, pH > 7 is basic/alkaline (more OH⁻ ions).",
       "prompt_template": "Explain {question} Describe the pH scale, explain what hydrogen ions (H⁺) have to do with acidity, and provide examples of common acids and bases.",
       "category": "chemistry"
     },
     {
-      "id": 12,
+      "id": 28,
       "question": "What are the different states of matter and how do they change?",
       "answer": "The main states are solid, liquid, gas, and plasma. Phase changes include melting, freezing, evaporation, condensation, sublimation, and deposition, driven by energy changes.",
       "prompt_template": "Explain {question} Describe the particle arrangement in each state, explain what happens during each phase change, and discuss the role of energy in phase transitions.",
+      "category": "chemistry"
+    },
+    {
+      "id": 29,
+      "question": "What is an exothermic reaction and how does it differ from an endothermic reaction?",
+      "answer": "Exothermic reactions release heat to the surroundings (negative ΔH). Endothermic reactions absorb heat from surroundings (positive ΔH).",
+      "prompt_template": "Explain {question} Give examples of each type of reaction and explain energy diagrams for both.",
+      "category": "chemistry"
+    },
+    {
+      "id": 30,
+      "question": "How do you balance a chemical equation?",
+      "answer": "Balance equations by adjusting coefficients so the number of atoms of each element is equal on both sides. This follows the Law of Conservation of Mass.",
+      "prompt_template": "Explain {question} Walk through balancing a sample equation step-by-step and explain why equations must be balanced.",
+      "category": "chemistry"
+    },
+    {
+      "id": 31,
+      "question": "What is the periodic table and how is it organized?",
+      "answer": "The periodic table organizes elements by increasing atomic number. Elements in the same group (column) have similar properties; periods (rows) show increasing energy levels.",
+      "prompt_template": "Explain {question} Describe how elements are arranged, what groups and periods represent, and how to identify metals, nonmetals, and metalloids.",
+      "category": "chemistry"
+    },
+    {
+      "id": 32,
+      "question": "What is molarity and how do you calculate it?",
+      "answer": "Molarity (M) is the concentration of a solution in moles of solute per liter of solution. The formula is M = moles of solute / liters of solution.",
+      "prompt_template": "Explain {question} Include the formula, work through a sample calculation, and explain why molarity is useful in chemistry.",
+      "category": "chemistry"
+    },
+    {
+      "id": 33,
+      "question": "Explain the difference between atoms, molecules, and compounds.",
+      "answer": "Atoms are the smallest unit of an element. Molecules are two or more atoms bonded together. Compounds are molecules containing two or more different elements.",
+      "prompt_template": "Explain {question} Give examples of each and explain how they relate to elements and the periodic table.",
+      "category": "chemistry"
+    },
+    {
+      "id": 34,
+      "question": "What is oxidation-reduction (redox) and how do you identify it?",
+      "answer": "Redox reactions involve electron transfer. Oxidation is losing electrons (OIL); reduction is gaining electrons (RIG). One substance is oxidized while another is reduced.",
+      "prompt_template": "Explain {question} Use the OIL RIG mnemonic, identify oxidation states, and give examples of common redox reactions.",
+      "category": "chemistry"
+    },
+    {
+      "id": 35,
+      "question": "What factors affect the rate of a chemical reaction?",
+      "answer": "Reaction rate is affected by temperature, concentration, surface area, catalysts, and the nature of reactants. Increasing these factors generally increases reaction rate.",
+      "prompt_template": "Explain {question} Describe how each factor affects collision frequency and energy, and give practical examples.",
+      "category": "chemistry"
+    },
+    {
+      "id": 36,
+      "question": "What is an electron configuration and how do you write one?",
+      "answer": "Electron configuration shows how electrons are distributed in an atom's orbitals. They follow the Aufbau principle, filling lower energy orbitals first (1s, 2s, 2p, 3s, etc.).",
+      "prompt_template": "Explain {question} Describe the Aufbau principle, Pauli exclusion principle, and Hund's rule, then write configurations for sample elements.",
       "category": "chemistry"
     }
   ]
