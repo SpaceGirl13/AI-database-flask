@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from model.user import User
 from flask import g
+from api.jwt_authorize import optional_token
 
 # Create Blueprint
 survey_api = Blueprint('survey_api', __name__)
