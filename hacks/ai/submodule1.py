@@ -4,6 +4,7 @@ import json
 import os
 from datetime import datetime
 from model.user import User
+from flask import g
 from api.jwt_authorize import optional_token
 
 # Create Blueprint
