@@ -141,6 +141,7 @@ class User(db.Model, UserMixin):
         _grade_data (Column): A JSON object representing the user's grade data.
         _ap_exam (Column): A JSON object representing the user's AP exam data.
         _school (Column): A string representing the user's school, defaults to "Unknown".
+        _badges (Column): A JSON array representing the user's earned badges.
     """
     __tablename__ = 'users'
 
@@ -156,6 +157,7 @@ class User(db.Model, UserMixin):
     _grade_data = db.Column(db.JSON, unique=False, nullable=True)
     _ap_exam = db.Column(db.JSON, unique=False, nullable=True)
     _school = db.Column(db.String(255), default="Unknown", nullable=True)
+    _badges = db.Column(db.JSON, default=list)
 
     # Define many-to-many relationship with Section model through UserSection table 
     # Overlaps setting avoids cicular dependencies with UserSection class
@@ -177,6 +179,7 @@ class User(db.Model, UserMixin):
         self._grade_data = grade_data if grade_data else {}
         self._ap_exam = ap_exam if ap_exam else {}
         self._school = school
+        self._badges = []
 
     # UserMixin/Flask-Login requires a get_id method to return the id as a string
     def get_id(self):
@@ -333,6 +336,38 @@ class User(db.Model, UserMixin):
     def school(self, school):
         self._school = school
 
+    @property
+    def badges(self):
+        """Get user's badges"""
+        return self._badges if self._badges else []
+
+    @badges.setter
+    def badges(self, value):
+        """Set user's badges"""
+        self._badges = value
+        db.session.commit()
+
+    def add_badge(self, badge_name):
+        """Add a badge to user if they don't have it already"""
+        current_badges = self.badges if self.badges else []
+        if badge_name not in current_badges:
+            current_badges.append(badge_name)
+            self._badges = current_badges
+            db.session.commit()
+            return True
+        return False
+
+    def has_badge(self, badge_name):
+        """Check if user has a specific badge"""
+        return badge_name in (self.badges if self.badges else [])
+
+    def read_badges(self):
+        """Return badges in a readable format"""
+        return {
+            'badges': self.badges if self.badges else [],
+            'badge_count': len(self.badges) if self.badges else 0
+        }
+
     # CRUD create/add a new record to the table
     # returns self or None on error
     def create(self, inputs=None):
@@ -361,7 +396,8 @@ class User(db.Model, UserMixin):
             "grade_data": self.grade_data,
             "ap_exam": self.ap_exam,
             "password": self._password,  # Only for internal use, not for API
-            "school": self.school
+            "school": self.school,
+            "badges": self.badges
         }
         sections = self.read_sections()
         data.update(sections)

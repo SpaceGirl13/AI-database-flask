@@ -1,8 +1,10 @@
 # submodule3.py - Flask Blueprint for AI Prompt Challenge Game
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 import json
 import os
 from datetime import datetime
+from api.jwt_authorize import token_required
+from model.user import User
 
 # Create Blueprint
 game_api = Blueprint('game_api', __name__)
@@ -186,16 +188,22 @@ def get_questions():
         return jsonify({'error': str(e)}), 500
 
 @game_api.route('/scores', methods=['POST'])
+@token_required()
 def save_score():
     """Save a player's score"""
     try:
+        current_user = g.current_user
         score_data = request.json
 
         # Validate required fields
-        required_fields = ['playerName', 'score', 'correctAnswers', 'timestamp']
+        required_fields = ['score', 'correctAnswers', 'timestamp']
         for field in required_fields:
             if field not in score_data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
+
+        # Add user info
+        score_data['playerName'] = current_user.name
+        score_data['uid'] = current_user.uid
 
         # Load existing scores
         data = load_scores()
@@ -206,10 +214,26 @@ def save_score():
         # Save back to file
         save_scores(data)
 
-        return jsonify({
+        # Check if user made leaderboard (top 10)
+        sorted_scores = sorted(data['scores'], key=lambda x: (-x['score'], x['timestamp']))
+        top_10_uids = [s.get('uid') for s in sorted_scores[:10]]
+        
+        badge_awarded = False
+        if current_user.uid in top_10_uids:
+            badge_awarded = current_user.add_badge('super_smart_genius')
+
+        response_data = {
             'success': True,
             'message': 'Score saved successfully'
-        }), 200
+        }
+        
+        if badge_awarded:
+            response_data['badge_awarded'] = {
+                'id': 'super_smart_genius',
+                'name': 'Super Smart Genius'
+            }
+
+        return jsonify(response_data), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -234,5 +258,26 @@ def get_leaderboard():
             'leaderboard': leaderboard
         }), 200
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@game_api.route('/complete', methods=['POST'])
+@token_required()
+def complete_submodule():
+    """Mark submodule 3 as complete and award badge"""
+    try:
+        current_user = g.current_user
+        badge_awarded = current_user.add_badge('prodigy_problem_solver')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Submodule 3 completed!',
+            'badge_awarded': badge_awarded,
+            'badge': {
+                'id': 'prodigy_problem_solver',
+                'name': 'Prodigy Problem Solver'
+            }
+        }), 200
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500

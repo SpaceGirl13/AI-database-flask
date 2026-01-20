@@ -6,7 +6,6 @@ from flask_migrate import Migrate
 from dotenv import load_dotenv
 import os
 
-
 # Load environment variables from .env file
 load_dotenv()
 
@@ -24,6 +23,8 @@ app.config['JSON_AS_ASCII'] = False  # Allow emojis, non-ASCII characters in JSO
 # Initialize Flask-Login object
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+
 
 
 # Allowed servers for cross-origin resource sharing (CORS)

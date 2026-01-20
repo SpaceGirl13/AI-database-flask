@@ -13,48 +13,14 @@ user_api = Blueprint('user_api', __name__,
 # API docs https://flask-restful.readthedocs.io/en/latest/api.html
 api = Api(user_api)
 
-class UserAPI:  
-_badges = db.Column(db.JSON, default=list)
-
-@property
-def badges(self):
-    """Get user's badges"""
-    return self._badges if self._badges else []
-
-@badges.setter
-def badges(self, value):
-    """Set user's badges"""
-    self._badges = value
-    db.session.commit()
-
-def add_badge(self, badge_name):
-    """Add a badge to user if they don't have it already"""
-    current_badges = self.badges if self.badges else []
-    if badge_name not in current_badges:
-        current_badges.append(badge_name)
-        self._badges = current_badges
-        db.session.commit()
-        return True
-    return False
-
-def has_badge(self, badge_name):
-    """Check if user has a specific badge"""
-    return badge_name in (self.badges if self.badges else [])
-
-def read_badges(self):
-    """Return badges in a readable format"""
-    return {
-        'badges': self.badges if self.badges else [],
-        'badge_count': len(self.badges) if self.badges else 0
-    }      
-    class _ID(Resource):  # Individual identification API operation
+class UserAPI:        
+    class _ID(Resource):
         @token_required()
         def get(self):
-            ''' Retrieve the current user from the token_required authentication check '''
             current_user = g.current_user
-            ''' Return the current user as a json object '''
-            return jsonify(current_user.read())
-    
+            user_data = current_user.read()
+            user_data['badges'] = current_user.read_badges()
+            return jsonify(user_data)
     
     class _BULK(Resource):  # Users API operation for Create, Read, Update, Delete 
         def post(self):

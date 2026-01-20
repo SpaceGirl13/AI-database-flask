@@ -9,6 +9,8 @@ from flask import current_app
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 from api.jwt_authorize import token_required
+from api.badge import badge_api
+
 
 
 # import "objects" from "this" project
@@ -79,6 +81,7 @@ app.register_blueprint(stock_api)
 app.register_blueprint(groq_api)
 app.register_blueprint(gemini_api)
 app.register_blueprint(microblog_api)
+app.register_blueprint(badge_api)
 
 app.register_blueprint(analytics_api)
 app.register_blueprint(student_api)

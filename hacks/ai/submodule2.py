@@ -5,7 +5,8 @@ import json
 import os
 import random
 import requests
-from api.jwt_authorize import optional_token
+from api.jwt_authorize import optional_token, token_required
+from model.user import User
 
 # Create Blueprint
 prompt_api = Blueprint('prompt_api', __name__)
@@ -22,6 +23,7 @@ def load_prompt_data():
 
 def save_prompt_data(data):
     """Save prompt testing history"""
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
@@ -65,12 +67,25 @@ def test_prompt():
 
         save_prompt_data(prompt_data)
 
-        return jsonify({
+        # Award badge for creating a good prompt
+        badge_awarded = False
+        if prompt_type == 'good' and hasattr(g, 'current_user') and g.current_user:
+            badge_awarded = g.current_user.add_badge('intelligent_instructor')
+
+        response_data = {
             'success': True,
             'prompt': prompt,
             'response': response,
             'type': prompt_type
-        }), 200
+        }
+        
+        if badge_awarded:
+            response_data['badge_awarded'] = {
+                'id': 'intelligent_instructor',
+                'name': 'Intelligent Instructor'
+            }
+
+        return jsonify(response_data), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -210,6 +225,27 @@ def submit_science_survey():
         current_app.logger.exception('Error saving survey')
         return jsonify(success=False, error=str(e)), 500
 
+@prompt_api.route('/complete', methods=['POST'])
+@token_required()
+def complete_submodule():
+    """Mark submodule 2 as complete and award badge"""
+    try:
+        current_user = g.current_user
+        badge_awarded = current_user.add_badge('perfect_prompt_engineer')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Submodule 2 completed!',
+            'badge_awarded': badge_awarded,
+            'badge': {
+                'id': 'perfect_prompt_engineer',
+                'name': 'Perfect Prompt Engineer'
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Create a separate blueprint to serve science questions at /api/science/questions
 science_api = Blueprint('science_api', __name__, url_prefix='/api/science')
 
@@ -322,6 +358,7 @@ def get_science_questions():
     except Exception as e:
         current_app.logger.exception('Error generating science questions')
         return jsonify(success=False, error=str(e)), 500
+
 def generate_simulated_response(prompt, prompt_type):
     """Generate AI response using Gemini API"""
     from __init__ import app

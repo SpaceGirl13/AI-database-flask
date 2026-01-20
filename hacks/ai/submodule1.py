@@ -39,7 +39,13 @@ def get_survey_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Add this import at the top
+from model.user import User
+from flask import g
+
+# Modify the submit_survey function:
 @survey_api.route('/survey', methods=['POST'])
+@optional_token()  # Make sure to import optional_token
 def submit_survey():
     try:
         form_data = request.json
@@ -66,10 +72,23 @@ def submit_survey():
         
         save_data(data)
         
-        return jsonify({
+        # Award badge if user is logged in
+        badge_awarded = False
+        if hasattr(g, 'current_user') and g.current_user:
+            badge_awarded = g.current_user.add_badge('sensational_surveyor')
+        
+        response_data = {
             'message': 'Survey submitted successfully',
             'data': data
-        }), 200
+        }
+        
+        if badge_awarded:
+            response_data['badge_awarded'] = {
+                'id': 'sensational_surveyor',
+                'name': 'Sensational Surveyor'
+            }
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
