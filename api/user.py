@@ -1,689 +1,757 @@
-import jwt
-from flask import Blueprint, app, request, jsonify, current_app, Response, g
-from flask_restful import Api, Resource # used for REST API building
-from datetime import datetime
-from __init__ import app
-from api.jwt_authorize import token_required
-from model.user import User
+""" database dependencies to support sqliteDB examples """
+from flask import current_app
+from flask_login import UserMixin
+from datetime import date
+from sqlalchemy.exc import IntegrityError
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
+import json
+
+from __init__ import app, db
 from model.github import GitHubUser
+from model.kasm import KasmUser
+from model.stocks import StockUser
 
-user_api = Blueprint('user_api', __name__,
-                   url_prefix='/api')
 
-# API docs https://flask-restful.readthedocs.io/en/latest/api.html
-api = Api(user_api)
+""" Helper Functions """
 
-class UserAPI:        
-    class _ID(Resource):
-        @token_required()
-        def get(self):
-            current_user = g.current_user
-            user_data = current_user.read()
-            user_data['badges'] = current_user.read_badges()
-            return jsonify(user_data)
-    
-    class _BULK(Resource):  # Users API operation for Create, Read, Update, Delete 
-        def post(self):
-            ''' Handle bulk user creation by sending POST requests to the single user endpoint '''
-            users = request.get_json()
-            
-            if not isinstance(users, list):
-                return {'message': 'Expected a list of user data'}, 400
-            
-            results = {'errors': []}
-            
-            with current_app.test_client() as client:
-                for user in users:
-                    # Set a default password as we don't have it for bulk creation
-                    user["password"] = app.config['DEFAULT_PASSWORD']
-                    
-                    # Simulate a POST request to the single user creation endpoint
-                    response = client.post('/api/user', json=user)
-                    
-                    if response.status_code != 200:  # Assuming success status code is 200
-                        results['errors'].append(response.get_json())
-                        continue
-                
-                    uid = user.get('uid')
-                    user_obj = User.query.filter_by(_uid=uid).first()
-                    # Process sections if provided
-                    if user_obj is not None:
-                        print("Creating:", user_obj.uid)
-                        abbreviations = [section["abbreviation"] for section in user.get('sections', [])]
-                        if len(abbreviations) > 0:  # Check if the list is not empty
-                            section_obj = user_obj.add_sections(abbreviations)
-                            if section_obj:
-                                # update the year of the added sections
-                                for section in user.get('sections'):
-                                    user_obj.update_section(section)
-                            else:
-                                results['errors'].append({'message': f'Failed to add sections {abbreviations} to user {uid}'})
-                                
-            
-            return jsonify(results) 
-            
-    class _CRUD(Resource):  # Users API operation for Create, Read, Update, Delete 
-        def post(self): # Create method
-            """
-            Create a new user.
+def default_year():
+    """Returns the default year for user enrollment based on the current month."""
+    current_month = date.today().month
+    current_year = date.today().year
+    # If current month is between August (8) and December (12), the enrollment year is next year.
+    if 7 <= current_month <= 12:
+        current_year = current_year + 1
+    return current_year
 
-            Reads data from the JSON body of the request, validates the input, and creates a new user in the database.
+""" Database Models """
 
-            Returns:
-                JSON response with the created user details or an error message.
-            """
-            
-            # Read data for json body
-            body = request.get_json()
-            
-            # Debug logging
-            #print(f"Received signup request with body: {body}")
-            
-            ''' Avoid garbage in, error checking '''
-            # validate name
-            name = body.get('name')
-            if name is None or len(name) < 2:
-                return {'message': f'Name is missing, or is less than 2 characters'}, 400
-            
-            # validate uid
-            uid = body.get('uid')
-            if uid is None or len(uid) < 2:
-                return {'message': f'User ID is missing, or is less than 2 characters'}, 400
-          
-            # check if uid is a GitHub account
-            _, status = GitHubUser().get(uid)
-            if status != 200:
-                return {'message': f'User ID {uid} not a valid GitHub account' }, 404
-            
-            ''' User object creation '''
-            #1: Setup minimal User object using __init__ method
-            password = body.get('password')
-            if password is not None:
-                if len(password) < 8 and not password.startswith("pbkdf2:sha256:"):
-                    return {'message': 'Password must be at least 8 characters'}, 400
-                user_obj = User(name=name, uid=uid, password=password)
-            else:
-                user_obj = User(name=name, uid=uid)
-            
-            # Handle additional fields that frontend sends
-            # Create a cleaned body with only the fields User model expects
-            cleaned_body = {
-                'name': name,
-                'uid': uid,
-                'password': password,
-                'email': body.get('email'),
-            }
-            
-            # Add optional fields if they exist
-            if body.get('sid'):
-                cleaned_body['sid'] = body.get('sid')
-            if body.get('school'):
-                cleaned_body['school'] = body.get('school')
-            if body.get('kasm_server_needed') is not None:
-                cleaned_body['kasm_server_needed'] = body.get('kasm_server_needed')
-            
-            # Remove None values
-            cleaned_body = {k: v for k, v in cleaned_body.items() if v is not None}
-            
-            # print(f"Cleaned body for user creation: {cleaned_body}")
+''' Tutorial: https://www.sqlalchemy.org/library.html#tutorials, try to get into Python shell and follow along '''
 
-            #2: Save the User object to the database using custom create method
-            try:
-                user = user_obj.create(cleaned_body) # pass the cleaned body elements to be saved in the database
-                #print(f"Create method returned: {user}")
-                #print(f"User type: {type(user)}")
-                
-                if not user:
-                    # Check if user was actually created in database despite create() returning None
-                    db_user = User.query.filter_by(_uid=uid).first()
-                    if db_user:
-                        #print(f"User exists in DB but create returned None: {db_user.uid}")
-                        return jsonify(db_user.read())  # Return the user anyway
-                    else:
-                        return {'message': f'Processed {name}, either a format error or User ID {uid} is duplicate'}, 400
-                
-                #print(f"Successfully created user: {user.uid}")
-                # return response, the created user details as a JSON object
-                return jsonify(user.read())
-                
-            except Exception as e:
-                #print(f"Error creating user: {e}")
-                return {'message': f'Error creating user: {str(e)}'}, 500
+class UserSection(db.Model):
+    """
+    UserSection Model
 
-        @token_required()
-        def get(self):
-            """
-            Retrieve all users.
+    A many-to-many relationship between the 'users' and 'sections' tables.
 
-            Retrieves a list of all users in the database.
+    Attributes:
+        user_id (Column): An integer representing the user's unique identifier, a foreign key that references the 'users' table.
+        section_id (Column): An integer representing the section's unique identifier, a foreign key that references the 'sections' table.
+        year (Column): An integer representing the year the user enrolled with the section. Defaults to the current year.
+    """
+    __tablename__ = 'user_sections'
+   
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    section_id = db.Column(db.Integer, db.ForeignKey('sections.id'), primary_key=True)
+    year = db.Column(db.Integer)
 
-            Returns:
-                JSON response with a list of user dictionaries.
-            """
-            # retrieve the current user from the token_required authentication check  
-            current_user = g.current_user
-            
-            """ User SQLAlchemy query returning list of all users """
-            users = User.query.all() # extract all users from the database
-             
-            # prepare a json list of user dictionaries
-            json_ready = []  
-            for user in users:
-                user_data = user.read()
-                if current_user.role == 'Admin' or current_user.id == user.id:
-                    user_data['access'] = ['rw'] # read-write access control 
-                else:
-                    user_data['access'] = ['ro'] # read-only access control 
-                json_ready.append(user_data)
-            
-            # return response, a list of user dictionaries in JSON format
-            return jsonify(json_ready)
-        
-        @token_required()
-        def put(self):
-            """
-            Update user details.
+    # Define relationships with User and Section models
+    user = db.relationship("User", backref=db.backref("user_sections_rel", cascade="all, delete-orphan"))
+    # Overlaps setting avoids cicular dependencies with Section class.
+    section = db.relationship("Section", backref=db.backref("section_users_rel", cascade="all, delete-orphan"), overlaps="users")
+   
+    def __init__(self, user, section):
+        self.user = user
+        self.section = section
+        self.year = default_year()
 
-            Retrieves the current user from the token_required authentication check and updates the user details based on the JSON body of the request.
 
-            Returns:
-                JSON response with the updated user details or an error message.
-            """
-            
-            # Retrieve the current user from the token_required authentication check
-            current_user = g.current_user
-            # Read data from the JSON body of the request
-            body = request.get_json()
+class Section(db.Model):
+    """
+    Section Model
+   
+    The Section class represents a section within the application, such as a class, department or group.
+   
+    Attributes:
+        id (db.Column): The primary key, an integer representing the unique identifier for the section.
+        _name (db.Column): A string representing the name of the section. It is not unique and cannot be null.
+        _abbreviation (db.Column): A unique string representing the abbreviation of the section's name. It cannot be null.
+    """
+    __tablename__ = 'sections'
 
-            ''' Admin-specific update handling '''
-            if current_user.role == 'Admin':
-                uid = body.get('uid')
-                # Admin is updating themself
-                if uid is None or uid == current_user.uid:
-                    user = current_user 
-                else: # Admin is updating another user
-                    """ User SQLAlchemy query returning a single user """
-                    user = User.query.filter_by(_uid=uid).first()
-                    if user is None:
-                        return {'message': f'User {uid} not found'}, 404
-            else:
-                # Non-admin can only update themselves
-                user = current_user
-                
-            # Accounts are desired to be GitHub accounts, change must be validated 
-            if body.get('uid') and body.get('uid') != user._uid:
-                _, status = GitHubUser().get(body.get('uid'))
-                if status != 200:
-                    return {'message': f'User ID {body.get("uid")} not a valid GitHub account' }, 404
-            
-            # Update the User object to the database using custom update method
-            user.update(body)
-            
-            # return response, the updated user details as a JSON object
-            return jsonify(user.read())
-        
-        @token_required("Admin")
-        def delete(self):
-            """
-            Delete a user.
-
-            Deletes a user from the database based on the JSON body of the request. Only accessible by Admin users.
-
-            Returns:
-                JSON response with a success message or an error message.
-            """
-            body = request.get_json()
-            uid = body.get('uid')
-            
-            """ User SQLAlchemy query returning a single user """
-            user = User.query.filter_by(_uid=uid).first()
-            
-            # bad request
-            if user is None:
-                return {'message': f'User {uid} not found'}, 404
-           
-            # Read and then Delete the User object using custom methods
-            user_json = user.read()
-            user.delete()
-            
-            # 204 is the status code for delete with no json response
-            return f"Deleted user: {user_json}", 204 # use 200 to test with Postman
-         
-    class _Section(Resource):  # Section API operation
-        @token_required()
-        def get(self):
-            ''' Retrieve the current user from the token_required authentication check '''
-            current_user = g.current_user
-            ''' Return the current user as a json object '''
-            return jsonify(current_user.read_sections())
+    id = db.Column(db.Integer, primary_key=True)
+    _name = db.Column(db.String(255), unique=False, nullable=False)
+    _abbreviation = db.Column(db.String(255), unique=True, nullable=False)
+ 
+    # Define many-to-many relationship with User model through UserSection table
+    # Overlaps setting avoids cicular dependencies with UserSection class
+    users = db.relationship('User', secondary=UserSection.__table__, lazy='subquery',
+                            backref=db.backref('section_users_rel', lazy=True, viewonly=True), overlaps="section_users_rel,user_sections_rel,user")    
+   
+    # Constructor
+    def __init__(self, name, abbreviation):
+        self._name = name
+        self._abbreviation = abbreviation
        
-        @token_required() 
-        def post(self):
-            ''' Retrieve the current user from the token_required authentication check '''
-            current_user = g.current_user
-            
-            ''' Read data for json body '''
-            body = request.get_json()
-            
-            ''' Error checking '''
-            sections = body.get('sections')
-            if sections is None or len(sections) == 0:
-                return {'message': f"No sections to add were provided"}, 400
-            
-            ''' Add sections'''
-            if not current_user.add_sections(sections):
-                return {'message': f'1 or more sections failed to add, current {sections} requested {current_user.read_sections()}'}, 404
-            
-            return jsonify(current_user.read_sections())
-        
-        @token_required()
-        def put(self):
-            ''' Retrieve the current user from the token_required authentication check '''
-            current_user = g.current_user
+    @property
+    def abbreviation(self):
+        return self._abbreviation
 
-            ''' Read data for json body '''
-            body = request.get_json()
+    # String representation of the Classes object
+    def __repr__(self):
+        return f"Class(_id={self.id}, name={self._name}, abbreviation={self._abbreviation})"
 
-            ''' Error checking '''
-            section_data = body.get('section')
-            if not section_data:
-                return {'message': 'Section data is required'}, 400
-            
-            if not section_data.get('abbreviation'):
-                return {'message': 'Section abbreviation is required'}, 400
-            
-            if not section_data.get('year'):
-                return {'message': 'Section year is required'}, 400
+    # CRUD create
+    def create(self):
+        try:
+            db.session.add(self)
+            db.session.commit()
+            return self
+        except IntegrityError:
+            db.session.rollback()
+            return None
 
-            ''' Update section year '''
-            if not current_user.update_section(section_data):
-                return {'message': f'Section {section_data.get("abbreviation")} not found or update failed'}, 404
+    # CRUD read
+    def read(self):
+        return {
+            "id": self.id,
+            "name": self._name,
+            "abbreviation": self._abbreviation
+        }
+       
+    # CRUD delete: remove self
+    # None
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+        return None
 
-            return jsonify(current_user.read_sections())
-        
-        @token_required()
-        def delete(self):
-            ''' Retrieve the current user from the token_required authentication check '''
-            current_user = g.current_user
-    
-            ''' Read data for json body '''
-            body = request.get_json()
-    
-            ''' Error checking '''
-            sections = body.get('sections')
-            if sections is None or len(sections) == 0:
-                return {'message': f"No sections to delete were provided"}, 400
-    
-            ''' Remove sections '''
-            if not current_user.remove_sections(sections):
-                return {'message': f'1 or more sections failed to delete, current {sections} requested {current_user.read_sections()}'}, 404
-    
-            return {'message': f'Sections {sections} deleted successfully'}, 200
-        
-    class _Security(Resource):
-        def post(self):
-            try:
-                body = request.get_json()
-                if not body:
-                    return {
-                        "message": "Please provide user details",
-                        "data": None,
-                        "error": "Bad request"
-                    }, 400
-                ''' Get Data '''
-                uid = body.get('uid')
-                if uid is None:
-                    return {'message': f'User ID is missing'}, 401
-                password = body.get('password')
-                if not password:
-                    return {'message': f'Password is missing'}, 401
-                            
-                ''' Find user '''
-    
-                user = User.query.filter_by(_uid=uid).first()
-                
-                if user is None or not user.is_password(password):
-                    
-                    return {'message': f"Invalid user id or password"}, 401
-                            
-                # Check if user is found
-                if user:
-                    try:
-                        token = jwt.encode(
-                            {"_uid": user._uid},
-                            current_app.config["SECRET_KEY"],
-                            algorithm="HS256"
-                        )
-                        # Return JSON response with cookie
-                        is_production = not (request.host.startswith('localhost') or request.host.startswith('127.0.0.1'))
-                        
-                        # Create JSON response
-                        response_data = {
-                            "message": f"Authentication for {user._uid} successful",
-                            "user": {
-                                "uid": user._uid,
-                                "name": user.name,
-                                "role": user.role
-                            }
-                        }
-                        resp = jsonify(response_data)
-                        
-                        # Set cookie
-                        if is_production:
-                            resp.set_cookie(
-                                current_app.config["JWT_TOKEN_NAME"],
-                                token,
-                                max_age=43200,  # 12 hours in seconds
-                                secure=True,
-                                httponly=True,
-                                path='/',
-                                samesite='None'
-                            )
-                        else:
-                            resp.set_cookie(
-                                current_app.config["JWT_TOKEN_NAME"],
-                                token,
-                                max_age=43200,  # 12 hours in seconds
-                                secure=False,
-                                httponly=False,  # Set to True for more security if JS access not needed
-                                path='/',
-                                samesite='Lax'
-                            )
-                        print(f"Token set: {token}")
-                        return resp 
-                    except Exception as e:
-                        return {
-                                        "error": "Something went wrong",
-                                        "message": str(e)
-                                    }, 500
-                return {
-                                "message": "Error fetching auth token!",
-                                "data": None,
-                                "error": "Unauthorized"
-                            }, 404
-            except Exception as e:
-                 return {
-                                "message": "Something went wrong!",
-                                "error": str(e),
-                                "data": None
-                            }, 500
-                 
-        @token_required()
-        def delete(self):
-            ''' Invalidate the current user's token by setting its expiry to 0 '''
-            current_user = g.current_user
-            try:
-                # Generate a token with practically 0 age
-                token = jwt.encode(
-                    {"_uid": current_user._uid, 
-                     "exp": datetime.utcnow()},
-                    current_app.config["SECRET_KEY"],
-                    algorithm="HS256"
-                )
-                # You might want to log this action or take additional steps here
-                
-                # Prepare a response indicating the token has been invalidated
-                resp = Response("Token invalidated successfully")
-                is_production = not (request.host.startswith('localhost') or request.host.startswith('127.0.0.1'))
-                if is_production:
-                    resp.set_cookie(
-                        current_app.config["JWT_TOKEN_NAME"],
-                        token,
-                        max_age=0,  # Immediately expire the cookie
-                        secure=True,
-                        httponly=True,
-                        path='/',
-                        samesite='None'
-                    )
+
+class User(db.Model, UserMixin):
+    """
+    User Model
+
+    This class represents the User model, which is used to manage actions in the 'users' table of the database. It is an
+    implementation of Object Relational Mapping (ORM) using SQLAlchemy, allowing for easy interaction with the database
+    using Python code. The User model includes various fields and methods to support user management, authentication,
+    and profile management functionalities.
+
+    Attributes:
+        __tablename__ (str): Specifies the name of the table in the database.
+        id (Column): The primary key, an integer representing the unique identifier for the user.
+        _name (Column): A string representing the user's name. It is not unique and cannot be null.
+        _uid (Column): A unique string identifier for the user, cannot be null.
+        _email (Column): A string representing the user's email address. It is not unique and cannot be null.
+        _sid (Column): A string representing the user's student ID. It is not unique and can be null.
+        _password (Column): A string representing the hashed password of the user. It is not unique and cannot be null.
+        _role (Column): A string representing the user's role within the application. Defaults to "User".
+        _pfp (Column): A string representing the path to the user's profile picture. It can be null.
+        kasm_server_needed (Column): A boolean indicating whether the user requires a Kasm server.
+        sections (Relationship): A many-to-many relationship between users and sections, allowing users to be associated with multiple sections.
+        _grade_data (Column): A JSON object representing the user's grade data.
+        _ap_exam (Column): A JSON object representing the user's AP exam data.
+        _school (Column): A string representing the user's school, defaults to "Unknown".
+        _badges (Column): A JSON array representing the user's earned badges.
+    """
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    _name = db.Column(db.String(255), unique=False, nullable=False)
+    _uid = db.Column(db.String(255), unique=True, nullable=False)
+    _email = db.Column(db.String(255), unique=False, nullable=False)
+    _sid = db.Column(db.String(255), unique=False, nullable=True)
+    _password = db.Column(db.String(255), unique=False, nullable=False)
+    _role = db.Column(db.String(20), default="User", nullable=False)
+    _pfp = db.Column(db.String(255), unique=False, nullable=True)
+    kasm_server_needed = db.Column(db.Boolean, default=False)
+    _grade_data = db.Column(db.JSON, unique=False, nullable=True)
+    _ap_exam = db.Column(db.JSON, unique=False, nullable=True)
+    _school = db.Column(db.String(255), default="Unknown", nullable=True)
+    _badges = db.Column(db.JSON, default=list)
+
+    # Define many-to-many relationship with Section model through UserSection table
+    # Overlaps setting avoids cicular dependencies with UserSection class
+    sections = db.relationship('Section', secondary=UserSection.__table__, lazy='subquery',
+                               backref=db.backref('user_sections_rel', lazy=True, viewonly=True), overlaps="user_sections_rel,section,section_users_rel,user,users")
+   
+    # Define one-to-one relationship with StockUser model
+    stock_user = db.relationship("StockUser", backref=db.backref("users", cascade="all"), lazy=True, uselist=False)
+
+    def __init__(self, name, uid, password=app.config["DEFAULT_PASSWORD"], kasm_server_needed=False, role="User", pfp='', grade_data=None, ap_exam=None, school="Unknown", sid=None):
+        self._name = name
+        self._uid = uid
+        self._email = "?"
+        self._sid = sid
+        self.set_password(password)
+        self.kasm_server_needed = kasm_server_needed
+        self._role = role
+        self._pfp = pfp
+        self._grade_data = grade_data if grade_data else {}
+        self._ap_exam = ap_exam if ap_exam else {}
+        self._school = school
+        self._badges = []
+
+    # UserMixin/Flask-Login requires a get_id method to return the id as a string
+    def get_id(self):
+        return str(self.id)
+
+    # UserMixin/Flask-Login requires is_authenticated to be defined
+    @property
+    def is_authenticated(self):
+        return True
+
+    # UserMixin/Flask-Login requires is_active to be defined
+    @property
+    def is_active(self):
+        return True
+
+    # UserMixin/Flask-Login requires is_anonymous to be defined
+    @property
+    def is_anonymous(self):
+        return False
+   
+    # validate uid is a unique GitHub username
+    @property
+    def email(self):
+        return self._email
+   
+    @email.setter
+    def email(self, email):
+        if email is None or email == "":
+            self._email = "?"
+        else:
+            self._email = email
+       
+    def set_email(self):
+        """Set the email of the user based on the UID, the GitHub username."""
+        data, status = GitHubUser().get(self._uid)
+        if status == 200:
+            self.email = data.get("email", "?")
+            pass
+        else:
+            self.email = "?"
+
+    # a name getter method, extracts name from object
+    @property
+    def name(self):
+        return self._name
+
+    # a setter function, allows name to be updated after initial object creation
+    @name.setter
+    def name(self, name):
+        self._name = name
+
+    # a getter method, extracts email from object
+    @property
+    def uid(self):
+        return self._uid
+
+    # a setter function, allows name to be updated after initial object creation
+    @uid.setter
+    def uid(self, uid):
+        self._uid = uid
+
+    # Student ID getter method
+    @property
+    def sid(self):
+        return self._sid
+
+    # Student ID setter function
+    @sid.setter
+    def sid(self, sid):
+        self._sid = sid
+
+    # check if uid parameter matches user id in object, return boolean
+    def is_uid(self, uid):
+        return self._uid == uid
+
+    @property
+    def password(self):
+        return self._password[0:10] + "..."  # because of security only show 1st characters
+
+    # set password, this is conventional setter with business logic
+    def set_password(self, password):
+        """Set password: hash if not already hashed, else set directly."""
+        if password and password.startswith("pbkdf2:sha256:"):
+            # Already hashed, set directly
+            self._password = password
+        else:
+            # Not hashed, hash it
+            self._password = generate_password_hash(password, "pbkdf2:sha256", salt_length=10)            
+
+    # check password parameter versus stored/encrypted password
+    def is_password(self, password):
+        """Check against hashed password."""
+        result = check_password_hash(self._password, password)
+        return result
+
+    # output content using str(object) in human readable form, uses getter
+    # output content using json dumps, this is ready for API response
+    def __str__(self):
+        return json.dumps(self.read())
+
+    @property
+    def role(self):
+        return self._role
+
+    @role.setter
+    def role(self, role):
+        self._role = role
+
+    def is_admin(self):
+        return self._role == "Admin"
+
+    def is_teacher(self):
+        return self._role == "Teacher"
+   
+    # getter method for profile picture
+    @property
+    def pfp(self):
+        return self._pfp
+
+    # setter function for profile picture
+    @pfp.setter
+    def pfp(self, pfp):
+        self._pfp = pfp
+
+    @property
+    def grade_data(self):
+        """Gets the user's grade data."""
+        if self._grade_data is None:
+            return {}
+        return self._grade_data
+
+    @grade_data.setter
+    def grade_data(self, grade_data):
+        """Sets the user's grade data."""
+        self._grade_data = grade_data if grade_data is not None else {}
+
+    @property
+    def ap_exam(self):
+        """Gets the user's AP exam data."""
+        if self._ap_exam is None:
+            return {}
+        return self._ap_exam
+
+    @ap_exam.setter
+    def ap_exam(self, ap_exam):
+        """Sets the user's AP exam data."""
+        self._ap_exam = ap_exam if ap_exam is not None else {}
+
+    @property
+    def school(self):
+        return self._school
+
+    @school.setter
+    def school(self, school):
+        self._school = school
+
+    @property
+    def badges(self):
+        """Get user's badges"""
+        return self._badges if self._badges else []
+
+    @badges.setter
+    def badges(self, value):
+        """Set user's badges"""
+        self._badges = value
+        db.session.commit()
+
+    def add_badge(self, badge_id):
+        """
+        Add a badge to the user if they don't already have it.
+        Returns True ONLY if this is a NEW badge award.
+        Returns False if the badge already exists.
+       
+        :param badge_id: The unique identifier for the badge
+        :return: True if badge was newly awarded, False if already exists
+        """
+        # Ensure badges is initialized as a list
+        current_badges = self.badges if self.badges else []
+       
+        # Check if badge already exists
+        if badge_id in current_badges:
+            return False  # Badge already awarded - don't show notification
+       
+        # Add new badge
+        current_badges.append(badge_id)
+        self._badges = current_badges
+       
+        # Commit to database
+        try:
+            db.session.commit()
+            return True  # NEW badge awarded - show notification
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error awarding badge: {e}")
+            return False
+
+    def has_badge(self, badge_id):
+        """
+        Check if user has a specific badge.
+       
+        :param badge_id: The unique identifier for the badge
+        :return: True if user has the badge, False otherwise
+        """
+        return badge_id in (self.badges if self.badges else [])
+
+    def read_badges(self):
+        """
+        Return badges in a readable format.
+       
+        :return: Dictionary with badges list and count
+        """
+        return {
+            'badges': self.badges if self.badges else [],
+            'badge_count': len(self.badges) if self.badges else 0
+        }
+
+    # CRUD create/add a new record to the table
+    # returns self or None on error
+    def create(self, inputs=None):
+        try:
+            db.session.add(self)  # add prepares to persist person object to Users table
+            db.session.commit()  # SqlAlchemy "unit of work pattern" requires a manual commit
+            if inputs:
+                self.update(inputs)
+            return self
+        except IntegrityError:
+            db.session.rollback()
+            return None
+
+    # CRUD read converts self to dictionary
+    # returns dictionary
+    def read(self):
+        data = {
+            "id": self.id,
+            "uid": self.uid,
+            "name": self.name,
+            "email": self.email,
+            "sid": self.sid,
+            "role": self.role,
+            "pfp": self.pfp,
+            "kasm_server_needed": self.kasm_server_needed,
+            "grade_data": self.grade_data,
+            "ap_exam": self.ap_exam,
+            "password": self._password,  # Only for internal use, not for API
+            "school": self.school,
+            "badges": self.badges
+        }
+        sections = self.read_sections()
+        data.update(sections)
+        return data
+       
+    # CRUD update: updates user name, password, phone
+    # returns self
+    def update(self, inputs):
+        if not isinstance(inputs, dict):
+            return self
+
+        name = inputs.get("name", "")
+        uid = inputs.get("uid", "")
+        email = inputs.get("email", "")
+        sid = inputs.get("sid", "")
+        password = inputs.get("password", "")
+        pfp = inputs.get("pfp", None)
+        kasm_server_needed = inputs.get("kasm_server_needed", None)
+        grade_data = inputs.get("grade_data", None)
+        ap_exam = inputs.get("ap_exam", None)
+        school = inputs.get("school", None)
+        # States before update
+        old_uid = self.uid
+        old_kasm_server_needed = self.kasm_server_needed
+
+        # Update table with new data
+        if name:
+            self.name = name
+        if uid:
+            self.set_uid(uid)
+        if email:
+            self.email = email
+        if sid:
+            self.sid = sid
+        if password:
+            self.set_password(password)
+        if pfp is not None:
+            self.pfp = pfp
+        if kasm_server_needed is not None:
+            self.kasm_server_needed = bool(kasm_server_needed)
+        if grade_data is not None:
+            self.grade_data = grade_data
+        if ap_exam is not None:
+            self.ap_exam = ap_exam
+        if school is not None:
+            self.school = school
+
+        # Check this on each update
+        if not email:
+            if email == "?":
+                self.set_email()
+
+        # Make a KasmUser object to interact with the Kasm API
+        kasm_user = KasmUser()
+
+        # Update Kasm server group membership if needed
+        if self.kasm_server_needed:
+            # UID has changed, delete old Kasm user if it exists
+            if old_uid != self.uid:
+                kasm_user.delete(old_uid)
+            # Create or update the user in Kasm, including a password
+            kasm_user.post(self.name, self.uid, password if password else app.config["DEFAULT_PASSWORD"])
+            # User is transtioning from non-Kasm to Kasm user, thus it requires posting all groups to Kasm
+            if not old_kasm_server_needed:
+                kasm_user.post_groups(self.uid, [section.abbreviation for section in self.sections])
+        # User is transitioning from Kasm user to non-Kasm user, thus it requires cleanup of defunct Kasm user
+        elif old_kasm_server_needed:
+            kasm_user.delete(self.uid)
+
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return None
+        return self
+   
+    # CRUD delete: remove self
+    # None
+    def delete(self):
+        try:
+            KasmUser().delete(self.uid)
+            db.session.delete(self)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+        return None  
+   
+    def save_pfp(self, image_data, filename):
+        """For saving profile picture."""
+        try:
+            user_dir = os.path.join(app.config['UPLOAD_FOLDER'], self.uid)
+            if not os.path.exists(user_dir):
+                os.makedirs(user_dir)
+            file_path = os.path.join(user_dir, filename)
+            with open(file_path, 'wb') as img_file:
+                img_file.write(image_data)
+            self.update({"pfp": filename})
+        except Exception as e:
+            raise e
+       
+    def delete_pfp(self):
+        """Deletes profile picture from user record."""
+        self.pfp = None
+        db.session.commit()
+       
+    def add_section(self, section):
+        # Query for the section using the provided abbreviation
+        found = any(s.id == section.id for s in self.sections)
+       
+        # Check if the section was found
+        if not found:
+            # Add the section to the user's sections
+            user_section = UserSection(user=self, section=section)
+            db.session.add(user_section)
+           
+            # Commit the changes to the database
+            db.session.commit()
+        else:
+            # Handle the case where the section exists
+            print("Section with abbreviation '{}' exists.".format(section._abbreviation))
+        # update kasm group membership
+        if self.kasm_server_needed:
+            KasmUser().post_groups(self.uid, [section.abbreviation])
+        return self
+   
+    def add_sections(self, sections):
+        """
+        Add multiple sections to the user's profile.
+
+        :param sections: A list of section abbreviations to be added.
+        :return: The user object with the added sections, or None if any section is not found.
+        """
+        # Iterate over each section abbreviation provided
+        for section in sections:
+            # Query the Section model to find the section object by its abbreviation
+            section_obj = Section.query.filter_by(_abbreviation=section).first()
+            # If the section is not found, return None
+            if not section_obj:
+                return None
+            # Add the found section object to the user's profile
+            self.add_section(section_obj)
+        # Return the user object with the added sections
+        return self
+       
+    def read_sections(self):
+        """Reads the sections associated with the user."""
+        sections = []
+        # The user_sections_rel backref provides access to the many-to-many relationship data
+        if self.user_sections_rel:
+            for user_section in self.user_sections_rel:
+                # This user_section backref "row" can be used to access section methods
+                section_data = user_section.section.read()
+                # Extract the year from the relationship data  
+                section_data['year'] = user_section.year  
+                sections.append(section_data)
+        return {"sections": sections}
+   
+    def update_section(self, section_data):
+        """
+        Updates the year enrolled for a given section.
+
+        :param section_data: A dictionary containing the section's abbreviation and the new year.
+        :return: A boolean indicating if the update was successful.
+        """
+        abbreviation = section_data.get("abbreviation", None)
+        year = int(section_data.get("year", default_year()))  # Convert year to integer, default to 0 if not found
+
+        # Find the user_section that matches the provided abbreviation through the user_sections_rel backref
+        section = next(
+            (s for s in self.user_sections_rel if s.section.abbreviation == abbreviation),
+            None
+        )
+
+        if section:
+            # Update the year for the found section
+            section.year = year
+            db.session.commit()
+            return True  # Update successful
+        else:
+            return False  # Section not found
+   
+    def remove_sections(self, section_abbreviations):
+        """
+        Remove sections based on provided abbreviations.
+
+        :param section_abbreviations: A list of section abbreviations to be removed.
+        :return: True if all sections are removed successfully, False otherwise.
+        """
+        try:
+            # Iterate over each abbreviation in the provided list
+            for abbreviation in section_abbreviations:
+                # Find the section matching the current abbreviation
+                section = next((section for section in self.sections if section.abbreviation == abbreviation), None)
+                if section:
+                    # If the section is found, remove it from the list of sections
+                    self.sections.remove(section)
                 else:
-                    resp.set_cookie(
-                        current_app.config["JWT_TOKEN_NAME"],
-                        token,
-                        max_age=0,  # Immediately expire the cookie
-                        secure=False,
-                        httponly=False,  # Set to True for more security if JS access not needed
-                        path='/',
-                        samesite='Lax'
-                    )
-                return resp
-            except Exception as e:
-                return {
-                    "message": "Failed to invalidate token",
-                    "error": str(e)
-                }, 500
-
-    class _GradeData(Resource):
+                    # If the section is not found, raise a ValueError
+                    raise ValueError(f"Section with abbreviation '{abbreviation}' not found.")
+            db.session.commit()
+            return True
+        except ValueError as e:
+            # Roll back the transaction if a ValueError is encountered
+            db.session.rollback()
+            print(e)  # Log the specific abbreviation error
+            return False
+        except Exception as e:
+            # Roll back the transaction if any other exception is encountered
+            db.session.rollback()
+            print(f"Unexpected error removing sections: {e}") # Log the unexpected error
+            return False
+       
+    def set_uid(self, new_uid=None):
         """
-        Grade data API operations
+        Update the user's directory based on the new UID provided.
+
+        :param new_uid: Optional new UID to update the user's directory.
+        :return: The updated user object.
         """
-        
-        @token_required()
-        def get(self):
-            """
-            Get the grade data for a user.
-            """
-            current_user = g.current_user
-            
-            # If request includes a UID parameter and user is admin, get that user's grade data
-            uid = request.args.get('uid')
-            if current_user.role == 'Admin' and uid:
-                user = User.query.filter_by(_uid=uid).first()
-                if not user:
-                    return {'message': f'User {uid} not found'}, 404
-            else:
-                user = current_user  # Get the current user's grade data
-                
-            return jsonify({'uid': user.uid, 'grade_data': user.grade_data})
-        
-        @token_required()
-        def post(self):
-            """
-            Add or update grade data for a user.
-            """
-            current_user = g.current_user
-            body = request.get_json()
-            
-            # Determine which user's grade data to update
-            uid = body.get('uid')
-            if current_user.role == 'Admin' and uid:
-                user = User.query.filter_by(_uid=uid).first()
-                if not user:
-                    return {'message': f'User {uid} not found'}, 404
-            else:
-                # Non-admins can only update their own grade data
-                if uid and uid != current_user.uid and current_user.role != 'Admin':
-                    return {'message': 'Permission denied: You can only update your own grade data'}, 403
-                user = current_user
-            
-            # Get the grade data from the request
-            grade_data = body.get('grade_data')
-            if not grade_data:
-                return {'message': 'Grade data is missing'}, 400
-                
-            # Update the user's grade data
-            user.update({'grade_data': grade_data})
-            
-            return jsonify({'message': 'Grade data updated successfully', 'uid': user.uid, 'grade_data': user.grade_data})
+        # Store the old UID for later comparison
+        old_uid = self._uid
+        # Update the UID if a new one is provided
+        if new_uid and new_uid != self._uid:
+            self._uid = new_uid
+            # Commit the UID change to the database
+            db.session.commit()
 
-    class _APExam(Resource):
+        # If the UID has changed, update the directory name
+        if old_uid != self._uid:
+            old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], old_uid)
+            new_path = os.path.join(current_app.config['UPLOAD_FOLDER'], self._uid)
+            if os.path.exists(old_path):
+                os.rename(old_path, new_path)
+
+    def add_stockuser(self):
         """
-        AP exam data API operations
+        Add 1-to-1 stock user to the user's record.
         """
-        
-        @token_required()
-        def get(self):
-            """
-            Get the AP exam data for a user.
-            """
-            current_user = g.current_user
-            
-            # If request includes a UID parameter and user is admin, get that user's AP exam data
-            uid = request.args.get('uid')
-            if current_user.role == 'Admin' and uid:
-                user = User.query.filter_by(_uid=uid).first()
-                if not user:
-                    return {'message': f'User {uid} not found'}, 404
-            else:
-                user = current_user  # Get the current user's AP exam data
-                
-            return jsonify({'uid': user.uid, 'ap_exam': user.ap_exam})
-        
-        @token_required()
-        def post(self):
-            """
-            Add or update AP exam data for a user.
-            """
-            current_user = g.current_user
-            body = request.get_json()
-            
-            # Determine which user's AP exam data to update
-            uid = body.get('uid')
-            if current_user.role == 'Admin' and uid:
-                user = User.query.filter_by(_uid=uid).first()
-                if not user:
-                    return {'message': f'User {uid} not found'}, 404
-            else:
-                # Non-admins can only update their own AP exam data
-                if uid and uid != current_user.uid and current_user.role != 'Admin':
-                    return {'message': 'Permission denied: You can only update your own AP exam data'}, 403
-                user = current_user
-            
-            # Get the AP exam data from the request
-            ap_exam = body.get('ap_exam')
-            if not ap_exam:
-                return {'message': 'AP exam data is missing'}, 400
-                
-            # Update the user's AP exam data
-            user.update({'ap_exam': ap_exam})
-            
-            return jsonify({'message': 'AP exam data updated successfully', 'uid': user.uid, 'ap_exam': user.ap_exam})
-
-    class _School(Resource):
+        if not self.stock_user:
+            self.stock_user = StockUser(uid=self._uid, stockmoney=100000)
+            db.session.commit()
+        return self
+           
+    def read_stockuser(self):
         """
-        School data API operations
+        Read the stock user daata associated with the user.
         """
+        if self.stock_user:
+            return self.stock_user.read()
+        return None
+   
+"""Database Creation and Testing """
 
-        @token_required()
-        def get(self):
-            """
-            Get the school data for a user.
-            """
-            current_user = g.current_user
+# Builds working data set for testing
+def initUsers():
+    with app.app_context():
+        """Create database and tables"""
+        db.create_all()
+        """Tester data for table"""
+       
+        default_grade_data = {
+            'grade': 'A',
+            'attendance': 5,
+            'work_habits': 5,
+            'behavior': 5,
+            'timeliness': 5,
+            'tech_sense': 4,
+            'tech_talk': 4,
+            'tech_growth': 4,
+            'advocacy': 4,
+            'communication_collaboration': 5,
+            'integrity': 5,
+            'organization': 5
+        }
 
-            # If request includes a UID parameter and user is admin, get that user's school data
-            uid = request.args.get('uid')
-            if current_user.role == 'Admin' and uid:
-                user = User.query.filter_by(_uid=uid).first()
-                if not user:
-                    return {'message': f'User {uid} not found'}, 404
-            else:
-                user = current_user  # Get the current user's school data
+        default_ap_exam = {
+            'predicted_score': {
+                'practice_based': {
+                    'mcq_2018': 0,
+                    'mcq_2020': 0,
+                    'mcq_2021': 0,
+                    'practice_frq': 0,
+                    'predicted_ap_score': 0,
+                    'confidence_level': 'Low'
+                },
+                'manual_calculator': {
+                    'mcq_score': 60,
+                    'frq_score': 6,
+                    'composite_score': 90,
+                    'predicted_ap_score': 5
+                }
+            },
+            'last_updated': None
+        }
 
-            return jsonify({'uid': user.uid, 'school': user.school})
+        u1 = User(name=app.config['ADMIN_USER'], uid=app.config['ADMIN_UID'], password=app.config['ADMIN_PASSWORD'], pfp=app.config['ADMIN_PFP'], kasm_server_needed=True, role="Admin")
+        u2 = User(name=app.config['DEFAULT_USER'], uid=app.config['DEFAULT_UID'], password=app.config['DEFAULT_USER_PASSWORD'], pfp=app.config['DEFAULT_USER_PFP'])
+        u3 = User(name='Nicholas Tesla', uid='niko', pfp='niko.png', role='Teacher', password=app.config['DEFAULT_USER_PASSWORD'])
 
-        @token_required()
-        def post(self):
-            """
-            Add or update school data for a user.
-            """
-            current_user = g.current_user
-            body = request.get_json()
 
-            # Determine which user's school data to update
-            uid = body.get('uid')
-            if current_user.role == 'Admin' and uid:
-                user = User.query.filter_by(_uid=uid).first()
-                if not user:
-                    return {'message': f'User {uid} not found'}, 404
-            else:
-                # Non-admins can only update their own school data
-                if uid and uid != current_user.uid and current_user.role != 'Admin':
-                    return {'message': 'Permission denied: You can only update your own school data'}, 403
-                user = current_user
-
-            # Get the school data from the request
-            school = body.get('school')
-            if not school:
-                return {'message': 'School data is missing'}, 400
-
-            # Update the user's school data
-            user.update({'school': school})
-
-            return jsonify({'message': 'School data updated successfully', 'uid': user.uid, 'school': user.school})
-
-    class _GuestCRUD(Resource):
-        """
-        Guest user API operations - simplified signup without GitHub validation
-        """
-
-        def post(self):
-            """
-            Create a new guest user account.
-
-            Accepts only username (uid) and password. Auto-generates required fields.
-            No GitHub validation required for guest accounts.
-
-            Returns:
-                JSON response with the created user details or an error message.
-            """
-            # Read data from json body
-            body = request.get_json()
-
-            # Validate uid (username)
-            uid = body.get('uid')
-            if uid is None or len(uid) < 2:
-                return {'message': 'Username is missing, or is less than 2 characters'}, 400
-
-            # Validate password (relaxed requirement for guests)
-            password = body.get('password')
-            if password is None or len(password) < 2:
-                return {'message': 'Password is missing, or is less than 2 characters'}, 400
-
-            # Auto-generate required fields for guest accounts
-            name = f"Guest_{uid}"
-            email = "?"
-            sid = "?"
-            school = "?"
-
-            # Create User object with auto-generated name
-            user_obj = User(name=name, uid=uid, password=password)
-
-            # Build cleaned body with all fields filled
-            cleaned_body = {
-                'name': name,
-                'uid': uid,
-                'password': password,
-                'email': email,
-                'sid': sid,
-                'school': school,
-                'kasm_server_needed': False
-            }
-
-            # Create the guest user (skip GitHub validation)
+        users = [u1, u2, u3]
+       
+        for user in users:
             try:
-                user = user_obj.create(cleaned_body)
+                user.create()
+            except IntegrityError:
+                '''fails with bad or duplicate data'''
+                db.session.remove()
+                print(f"Records exist, duplicate email, or error: {user.uid}")
 
-                if not user:
-                    # Check if user was actually created in database
-                    db_user = User.query.filter_by(_uid=uid).first()
-                    if db_user:
-                        return jsonify(db_user.read())
-                    else:
-                        return {'message': f'Failed to create guest account for {uid}, username may already exist'}, 400
-
-                # Return the created user details
-                return jsonify(user.read())
-
-            except Exception as e:
-                return {'message': f'Error creating guest user: {str(e)}'}, 500
-
-    # building RESTapi endpoint
-    api.add_resource(_ID, '/id')
-    api.add_resource(_BULK, '/users')
-    api.add_resource(_CRUD, '/user')
-    api.add_resource(_GuestCRUD, '/user/guest')
-    api.add_resource(_Section, '/user/section')
-    api.add_resource(_Security, '/authenticate')
-    api.add_resource(_GradeData, '/grade_data')
-    api.add_resource(_APExam, '/apexam')
-    api.add_resource(_School, '/school')
+        s1 = Section(name='Computer Science A', abbreviation='CSA')
+        s2 = Section(name='Computer Science Principles', abbreviation='CSP')
+        s3 = Section(name='Engineering Robotics', abbreviation='Robotics')
+        s4 = Section(name='Computer Science and Software Engineering', abbreviation='CSSE')
+        sections = [s1, s2, s3, s4]
+       
+        for section in sections:
+            try:
+                section.create()    
+            except IntegrityError:
+                '''fails with bad or duplicate data'''
+                db.session.remove()
+                print(f"Records exist, duplicate email, or error: {section.name}")
+           
+        u1.add_section(s1)
+        u1.add_section(s2)
+        u2.add_section(s2)
+        u2.add_section(s3)
+        u3.add_section(s4)
