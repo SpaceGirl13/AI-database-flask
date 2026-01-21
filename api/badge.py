@@ -34,7 +34,7 @@ BADGE_DEFINITIONS = {
         'description': 'Achieved comprehensive understanding of ethical AI practices',
         'requirement': 'Complete Entire Quest',
         'type': 'completion',
-        'image': 'https://github.com/user-attachments/assets/567ee7b4-236d-41e3-ac64-4d8e43c6b390'
+        'pfp': '<img width="1181" height="1181" alt="Image" src="https://github.com/user-attachments/assets/93e2fc3f-4ab4-4eef-8369-6a4c3a18f660" />'
     },
     'super_smart_genius': {
         'name': 'Super Smart Genius',
