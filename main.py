@@ -37,6 +37,7 @@ from api.submodule3_feedback_api import submodule3_feedback_api  # Import submod
 from api.math_questions_api import math_questions_api  # Import math questions API
 from api.science_questions_api import science_questions_api  # Import science questions API
 from api.coding_questions_api import coding_questions_api  # Import coding questions API
+from api.admin_api import admin_api  # Import admin API for database management
 #from api.announcement import announcement_api ##temporary revert
 
 # database Initialization functions
@@ -98,6 +99,7 @@ app.register_blueprint(submodule3_feedback_api, url_prefix='/api/submodule3')  #
 app.register_blueprint(math_questions_api, url_prefix='/api/math')  # Register math questions API
 app.register_blueprint(science_questions_api, url_prefix='/api/science')  # Register science questions API
 app.register_blueprint(coding_questions_api, url_prefix='/api/coding')  # Register coding questions API
+app.register_blueprint(admin_api)  # Register admin API for database management
 # app.register_blueprint(announcement_api) ##temporary revert
 
 # Jokes file initialization
@@ -167,6 +169,14 @@ def index():
 def u2table():
     users = User.query.all()
     return render_template("u2table.html", user_data=users)
+
+@app.route('/admin/tables')
+@login_required
+def admin_tables():
+    # Temporarily allow any logged-in user (remove this check for production)
+    # if current_user.role != 'Admin':
+    #     return abort(403)
+    return render_template("admin_tables.html")
 
 @app.route('/sections/')
 @login_required

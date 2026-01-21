@@ -261,20 +261,19 @@ def complete_submodule():
         current_user = g.current_user
         badge_id = 'perfect_prompt_engineer'
         was_newly_awarded = current_user.add_badge(badge_id)
-        
+
+        # Always include badge info so UI can display it
+        badge_info = get_badge_info(badge_id)
+
         response_data = {
             'success': True,
             'message': 'Submodule 2 completed!',
-            'badge_awarded': was_newly_awarded
+            'badge_awarded': was_newly_awarded,
+            'badge': badge_info  # Always include badge info
         }
-        
-        if was_newly_awarded:
-            badge_info = get_badge_info(badge_id)
-            if badge_info:
-                response_data['badge'] = badge_info
-        
+
         return jsonify(response_data), 200
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
