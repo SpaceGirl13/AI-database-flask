@@ -7,18 +7,22 @@ try:
     from __init__ import app, db
     from model.user import User, Section, UserSection
     from model.stocks import StockUser
-    from model.questions import Question
+    from model.questions import Question, initQuestions
     from model.feedback import Feedback
-    from model.microblog import Microblog
     from model.post import Post
     from model.study import Study
     
+    # Import survey models - all three classes explicitly
+    from model.survey_results import SurveyUser, SurveyResponse, AIToolPreference, initSurveyResults
+    
     # Import entire modules to get all their models
     import model.classroom
-    import model.survey_results
+    
+    print("✓ All models imported successfully at module level")
 except ImportError as e:
-    print(f"Import warning at module level: {e}")
-    pass
+    print(f"❌ CRITICAL: Import error at module level: {e}")
+    import traceback
+    traceback.print_exc()
 
 def migrate():
     """
@@ -26,13 +30,14 @@ def migrate():
     1. Imports all models
     2. Creates all tables from SQLAlchemy models (db.create_all)
     3. Adds the _badges column to users table if missing
+    4. Initializes seed data for questions and survey
     """
     
     print("=" * 60)
     print("🔧 Starting Database Migration...")
     print("=" * 60)
     
-    # STEP 1: Import all models and create tables
+    # STEP 1: Create all tables
     print("\n📋 Step 1: Creating database tables from models...")
     try:
         print("📦 Models loaded from module-level imports")
@@ -50,16 +55,26 @@ def migrate():
             for table in sorted(tables):
                 print(f"   - {table}")
             
+            # Verify critical tables exist
+            if 'ai_tool_preferences' in tables:
+                print("   ✅ ai_tool_preferences table confirmed")
+            else:
+                print("   ⚠️  ai_tool_preferences table MISSING!")
+                
+            if 'questions' in tables:
+                print("   ✅ questions table confirmed")
+            else:
+                print("   ⚠️  questions table MISSING!")
+            
     except Exception as e:
         print(f"❌ Error creating tables: {e}")
         import traceback
         traceback.print_exc()
     
-    # STEP 2: Add _badges column if it doesn't exist (for existing databases)
+    # STEP 2: Add _badges column if it doesn't exist
     print("\n📋 Step 2: Checking for custom column migrations...")
     db_path = 'instance/volumes/user_management.db'
     
-    # Create directories if they don't exist
     os.makedirs('instance/volumes', exist_ok=True)
     
     if not os.path.exists(db_path):
@@ -67,12 +82,10 @@ def migrate():
         print("=" * 60)
         return
     
-    # Add _badges column to users table if missing
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Check if users table exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
         if cursor.fetchone() is None:
             print("⚠️  Users table doesn't exist yet, skipping column migration")
@@ -80,7 +93,6 @@ def migrate():
             print("=" * 60)
             return
         
-        # Check if _badges column exists
         cursor.execute("PRAGMA table_info(users);")
         columns = [row[1] for row in cursor.fetchall()]
         
@@ -96,6 +108,54 @@ def migrate():
         
     except Exception as e:
         print(f"⚠️  Column migration error: {e}")
+    
+    # STEP 3: Initialize seed data (ONLY if tables exist)
+    print("\n📋 Step 3: Initializing seed data...")
+    try:
+        with app.app_context():
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            
+            # Initialize questions ONLY if table exists
+            if 'questions' in tables:
+                question_count = Question.query.count()
+                if question_count == 0:
+                    print("🌱 Questions table is empty, attempting to initialize seed data...")
+                    try:
+                        initQuestions()
+                        new_count = Question.query.count()
+                        if new_count > 0:
+                            print(f"✅ Initialized {new_count} questions")
+                        else:
+                            print("⚠️  initQuestions() ran but no questions were added (JSON files missing?)")
+                    except Exception as e:
+                        print(f"⚠️  Error initializing questions: {e}")
+                else:
+                    print(f"✓ Questions table already has {question_count} records")
+            else:
+                print("⚠️  questions table doesn't exist, skipping seed data")
+            
+            # Initialize survey ONLY if table exists
+            if 'survey_responses' in tables:
+                survey_count = SurveyResponse.query.count()
+                if survey_count == 0:
+                    print("🌱 Survey table is empty, initializing seed data...")
+                    try:
+                        initSurveyResults()
+                        new_count = SurveyResponse.query.count()
+                        print(f"✅ Initialized {new_count} survey responses")
+                    except Exception as e:
+                        print(f"⚠️  Error initializing survey: {e}")
+                else:
+                    print(f"✓ Survey table already has {survey_count} records")
+            else:
+                print("⚠️  survey_responses table doesn't exist, skipping seed data")
+                
+    except Exception as e:
+        print(f"⚠️  Seed data initialization error: {e}")
+        import traceback
+        traceback.print_exc()
     
     print("\n" + "=" * 60)
     print("✅ Database Migration Complete!")
