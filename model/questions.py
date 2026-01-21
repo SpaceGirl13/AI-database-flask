@@ -21,6 +21,7 @@ class Question(db.Model):
         _prompt_template (Column): Template for AI prompt generation.
     """
     __tablename__ = 'questions'
+    __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
     _subject = db.Column(db.String(50), nullable=False)

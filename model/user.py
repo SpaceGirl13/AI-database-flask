@@ -40,7 +40,8 @@ class UserSection(db.Model):
         year (Column): An integer representing the year the user enrolled with the section. Defaults to the current year.
     """
     __tablename__ = 'user_sections'
-   
+    __table_args__ = {'extend_existing': True}
+
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
     section_id = db.Column(db.Integer, db.ForeignKey('sections.id'), primary_key=True)
     year = db.Column(db.Integer)
@@ -68,6 +69,7 @@ class Section(db.Model):
         _abbreviation (db.Column): A unique string representing the abbreviation of the section's name. It cannot be null.
     """
     __tablename__ = 'sections'
+    __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
     _name = db.Column(db.String(255), unique=False, nullable=False)
@@ -144,6 +146,7 @@ class User(db.Model, UserMixin):
         _badges (Column): A JSON array representing the user's earned badges.
     """
     __tablename__ = 'users'
+    __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
     _name = db.Column(db.String(255), unique=False, nullable=False)
