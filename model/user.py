@@ -142,7 +142,7 @@ class User(db.Model, UserMixin):
         _grade_data (Column): A JSON object representing the user's grade data.
         _ap_exam (Column): A JSON object representing the user's AP exam data.
         _school (Column): A string representing the user's school, defaults to "Unknown".
-        _badges (Column): A JSON array representing the user's earned badges.
+        _badges (Column): A TEXT column storing JSON array of the user's earned badges.
     """
     __tablename__ = 'users'
     __table_args__ = {'extend_existing': True}
@@ -159,7 +159,7 @@ class User(db.Model, UserMixin):
     _grade_data = db.Column(db.JSON, unique=False, nullable=True)
     _ap_exam = db.Column(db.JSON, unique=False, nullable=True)
     _school = db.Column(db.String(255), default="Unknown", nullable=True)
-    _badges = db.Column(db.JSON, default=list)
+    _badges = db.Column(db.Text, default='[]')  # Changed from db.JSON to db.Text
 
     # Define many-to-many relationship with Section model through UserSection table
     # Overlaps setting avoids circular dependencies with UserSection class
@@ -184,7 +184,7 @@ class User(db.Model, UserMixin):
         self._grade_data = grade_data if grade_data else {}
         self._ap_exam = ap_exam if ap_exam else {}
         self._school = school
-        self._badges = []
+        self._badges = '[]'  # Initialize as JSON string
 
     # UserMixin/Flask-Login requires a get_id method to return the id as a string
     def get_id(self):
@@ -342,13 +342,34 @@ class User(db.Model, UserMixin):
 
     @property
     def badges(self):
-        """Get user's badges"""
-        return self._badges if self._badges else []
+        """Get user's badges - handles both TEXT and JSON storage"""
+        if self._badges is None or self._badges == '':
+            return []
+        # Handle string storage (TEXT column)
+        if isinstance(self._badges, str):
+            try:
+                # Remove extra quotes if present (e.g., '"[]"' -> '[]')
+                cleaned = self._badges.strip('"')
+                return json.loads(cleaned)
+            except (json.JSONDecodeError, ValueError):
+                return []
+        # Handle list storage (if somehow already a list)
+        return self._badges if isinstance(self._badges, list) else []
 
     @badges.setter
     def badges(self, value):
-        """Set user's badges"""
-        self._badges = value
+        """Set user's badges - stores as JSON string"""
+        if isinstance(value, list):
+            self._badges = json.dumps(value)
+        elif isinstance(value, str):
+            # Verify it's valid JSON
+            try:
+                json.loads(value)
+                self._badges = value
+            except (json.JSONDecodeError, ValueError):
+                self._badges = '[]'
+        else:
+            self._badges = '[]'
         db.session.commit()
 
     def add_badge(self, badge_id):
@@ -369,7 +390,7 @@ class User(db.Model, UserMixin):
        
         # Add new badge
         current_badges.append(badge_id)
-        self._badges = current_badges
+        self._badges = json.dumps(current_badges)  # Store as JSON string
        
         # Commit to database
         try:
@@ -395,9 +416,10 @@ class User(db.Model, UserMixin):
        
         :return: Dictionary with badges list and count
         """
+        badges_list = self.badges if self.badges else []
         return {
-            'badges': self.badges if self.badges else [],
-            'badge_count': len(self.badges) if self.badges else 0
+            'badges': badges_list,
+            'badge_count': len(badges_list)
         }
 
     # CRUD create/add a new record to the table
@@ -429,7 +451,7 @@ class User(db.Model, UserMixin):
             "ap_exam": self.ap_exam,
             "password": self._password,  # Only for internal use, not for API
             "school": self.school,
-            "badges": self.badges
+            "badges": self.badges  # This will use the property getter
         }
         sections = self.read_sections()
         data.update(sections)
