@@ -15,44 +15,50 @@ BADGE_DEFINITIONS = {
         'name': 'Delightful Data Scientist',
         'description': 'Mastered foundational AI concepts and data literacy',
         'requirement': 'Complete Submodule 1',
-        'type': 'submodule'
+        'type': 'submodule',
+        'image_url': 'https://github.com/user-attachments/assets/d3d6f596-cae3-401d-9390-a3721aa7cfb3'
     },
     'perfect_prompt_engineer': {
         'name': 'Perfect Prompt Engineer',
         'description': 'Demonstrated expertise in crafting effective AI prompts',
         'requirement': 'Complete Submodule 2',
-        'type': 'submodule'
+        'type': 'submodule',
+        'image_url': 'https://github.com/user-attachments/assets/65a9a19a-4f0a-4e08-8a70-cd37c1e75b7d'
     },
     'prodigy_problem_solver': {
         'name': 'Prodigy Problem Solver',
         'description': 'Applied AI knowledge to solve real-world challenges',
         'requirement': 'Complete Submodule 3',
-        'type': 'submodule'
+        'type': 'submodule',
+        'image_url': 'https://github.com/user-attachments/assets/d85f749c-2380-4427-96af-20b462e65514'
     },
     'responsible_ai_master': {
         'name': 'Responsible AI Master',
         'description': 'Achieved comprehensive understanding of ethical AI practices',
         'requirement': 'Complete Entire Quest',
         'type': 'completion',
-        'pfp': '<img width="1181" height="1181" alt="Image" src="https://github.com/user-attachments/assets/93e2fc3f-4ab4-4eef-8369-6a4c3a18f660" />'
+        'image_url': 'https://github.com/user-attachments/assets/93e2fc3f-4ab4-4eef-8369-6a4c3a18f660'
     },
     'super_smart_genius': {
         'name': 'Super Smart Genius',
         'description': 'Ranked among top performers in the platform',
         'requirement': 'Make the Leaderboard',
-        'type': 'special'
+        'type': 'special',
+        'image_url': 'https://github.com/user-attachments/assets/6a96f46c-b926-4c44-8926-1ffbba007a05'
     },
     'intelligent_instructor': {
         'name': 'Intelligent Instructor',
         'description': 'Crafted a high-quality, effective AI prompt',
         'requirement': 'Create a "Good" Prompt',
-        'type': 'special'
+        'type': 'special',
+        'image_url': 'https://github.com/user-attachments/assets/b1a7fc47-da59-4f14-a8d0-2b4c36df7cc5'
     },
     'sensational_surveyor': {
         'name': 'Sensational Surveyor',
         'description': 'Provided valuable feedback to improve the platform',
         'requirement': 'Submit the Survey',
-        'type': 'special'
+        'type': 'special',  # ← ADDED COMMA HERE
+        'image_url': 'https://github.com/user-attachments/assets/5aebe49f-d1e5-4340-bba0-7e3e5b3afae2'
     }
 }
 
