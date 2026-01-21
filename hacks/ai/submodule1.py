@@ -1,95 +1,152 @@
 # submodule1.py - Flask Blueprint for AI Usage Survey
 from flask import Blueprint, request, jsonify, g
-import json
-import os
 from datetime import datetime
 from model.user import User
-from flask import g
+from model.survey_results import SurveyUser, SurveyResponse, AIToolPreference
 from api.jwt_authorize import optional_token
+from __init__ import db
+from sqlalchemy import func
 
 # Create Blueprint
 survey_api = Blueprint('survey_api', __name__)
 
-# Data file for storing survey responses
-DATA_FILE = 'survey_data.json'
 
-def load_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r') as f:
-            return json.load(f)
-    else:
-        return {
-            'english': {'ChatGPT': 0, 'Claude': 0, 'Gemini': 0, 'Copilot': 0},
-            'math': {'ChatGPT': 0, 'Claude': 0, 'Gemini': 0, 'Copilot': 0},
-            'science': {'ChatGPT': 0, 'Claude': 0, 'Gemini': 0, 'Copilot': 0},
-            'cs': {'ChatGPT': 0, 'Claude': 0, 'Gemini': 0, 'Copilot': 0},
-            'history': {'ChatGPT': 0, 'Claude': 0, 'Gemini': 0, 'Copilot': 0},
-            'useAI': {'Yes': 0, 'No': 0},
-            'frqs': []
-        }
+def get_aggregated_data():
+    """Query database and aggregate survey results for display"""
+    ai_tools = ['ChatGPT', 'Claude', 'Gemini', 'Copilot']
 
-def save_data(data):
-    with open(DATA_FILE, 'w') as f:
-        json.dump(data, f, indent=2)
+    data = {
+        'english': {tool: 0 for tool in ai_tools},
+        'math': {tool: 0 for tool in ai_tools},
+        'science': {tool: 0 for tool in ai_tools},
+        'cs': {tool: 0 for tool in ai_tools},
+        'history': {tool: 0 for tool in ai_tools},
+        'useAI': {'Yes': 0, 'No': 0},
+        'frqs': []
+    }
+
+    # Count AI tool preferences by subject
+    preferences = db.session.query(
+        AIToolPreference._subject,
+        AIToolPreference._ai_tool,
+        func.count(AIToolPreference.id)
+    ).group_by(AIToolPreference._subject, AIToolPreference._ai_tool).all()
+
+    for subject, ai_tool, count in preferences:
+        if subject in data and ai_tool in data[subject]:
+            data[subject][ai_tool] = count
+
+    # Count useAI responses
+    use_ai_counts = db.session.query(
+        SurveyResponse._uses_ai_schoolwork,
+        func.count(SurveyResponse.id)
+    ).group_by(SurveyResponse._uses_ai_schoolwork).all()
+
+    for use_ai, count in use_ai_counts:
+        if use_ai in data['useAI']:
+            data['useAI'][use_ai] = count
+
+    # Get recent FRQs (policy perspectives) with user info
+    recent_responses = SurveyResponse.query.filter(
+        SurveyResponse._policy_perspective.isnot(None),
+        SurveyResponse._policy_perspective != ''
+    ).order_by(SurveyResponse._completed_at.desc()).limit(20).all()
+
+    for response in recent_responses:
+        # Get the username for this response
+        survey_user = SurveyUser.query.get(response.user_id)
+        username = survey_user._username if survey_user else 'anonymous'
+
+        data['frqs'].append({
+            'text': response._policy_perspective,
+            'timestamp': response._completed_at.isoformat() if response._completed_at else datetime.now().isoformat(),
+            'user_id': username
+        })
+
+    return data
+
 
 @survey_api.route('/survey', methods=['GET'])
 def get_survey_data():
+    """Get aggregated survey data from database"""
     try:
-        data = load_data()
+        data = get_aggregated_data()
         return jsonify(data), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Add this import at the top
-from model.user import User
-from flask import g
 
-# Modify the submit_survey function:
 @survey_api.route('/survey', methods=['POST'])
-@optional_token()  # Make sure to import optional_token
+@optional_token()
 def submit_survey():
+    """Submit a new survey response to the database"""
     try:
         form_data = request.json
-        
+
         required_fields = ['english', 'math', 'science', 'cs', 'history', 'useAI', 'frq']
         for field in required_fields:
             if field not in form_data or not form_data[field]:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
-        
-        data = load_data()
-        
-        data['english'][form_data['english']] += 1
-        data['math'][form_data['math']] += 1
-        data['science'][form_data['science']] += 1
-        data['cs'][form_data['cs']] += 1
-        data['history'][form_data['history']] += 1
-        data['useAI'][form_data['useAI']] += 1
-        
-        frq_entry = {
-            'text': form_data['frq'],
-            'timestamp': datetime.now().isoformat()
-        }
-        data['frqs'].insert(0, frq_entry)
-        
-        save_data(data)
-        
+
+        # Get or create user
+        username = 'anonymous'
+        if hasattr(g, 'current_user') and g.current_user:
+            username = g.current_user.uid
+        else:
+            username = f'anonymous_{datetime.now().strftime("%Y%m%d%H%M%S%f")}'
+
+        # Check if user exists, create if not
+        survey_user = SurveyUser.query.filter_by(_username=username).first()
+        if not survey_user:
+            survey_user = SurveyUser(username=username)
+            db.session.add(survey_user)
+            db.session.commit()
+
+        # Create survey response
+        response = SurveyResponse(
+            user_id=survey_user.id,
+            uses_ai_schoolwork=form_data['useAI'],
+            policy_perspective=form_data['frq'],
+            badge_awarded=False
+        )
+        db.session.add(response)
+        db.session.commit()
+
+        # Create AI tool preferences for each subject
+        subjects = ['english', 'math', 'science', 'cs', 'history']
+        for subject in subjects:
+            preference = AIToolPreference(
+                response_id=response.id,
+                subject=subject,
+                ai_tool=form_data[subject]
+            )
+            db.session.add(preference)
+
+        db.session.commit()
+
         # Award badge if user is logged in
         badge_awarded = False
         if hasattr(g, 'current_user') and g.current_user:
             badge_awarded = g.current_user.add_badge('sensational_surveyor')
-        
+            response.badge_awarded = badge_awarded
+            db.session.commit()
+
+        # Get updated aggregated data
+        data = get_aggregated_data()
+
         response_data = {
             'message': 'Survey submitted successfully',
             'data': data
         }
-        
+
         if badge_awarded:
             response_data['badge_awarded'] = {
                 'id': 'sensational_surveyor',
                 'name': 'Sensational Surveyor'
             }
-        
+
         return jsonify(response_data), 200
-        
+
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500

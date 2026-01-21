@@ -216,183 +216,93 @@ class AIToolPreference(db.Model):
 
 
 """Database Creation and Testing"""
+import random
 
 
 def initSurveyResults():
-    """Initialize survey results with staged test data"""
+    """Initialize survey results with 100 staged test responses"""
     with app.app_context():
         db.create_all()
 
-        # Staged test users
-        users_data = [
-            {"username": "alice_student", "email": "alice@example.com"},
-            {"username": "bob_learner", "email": "bob@example.com"},
-            {"username": "charlie_coder", "email": "charlie@example.com"},
-            {"username": "diana_dev", "email": "diana@example.com"},
-            {"username": "evan_engineer", "email": "evan@example.com"},
-            {"username": "fiona_future", "email": "fiona@example.com"},
-            {"username": "george_geek", "email": "george@example.com"},
-            {"username": "hannah_hacker", "email": "hannah@example.com"},
-            {"username": "ivan_innovator", "email": "ivan@example.com"},
+        # AI tools and their weighted probabilities for each subject
+        ai_tools = ['ChatGPT', 'Claude', 'Gemini', 'Copilot']
+
+        # Subject-specific weights (some tools are more popular for certain subjects)
+        subject_weights = {
+            'english': [0.35, 0.25, 0.25, 0.15],  # ChatGPT popular for writing
+            'math': [0.20, 0.35, 0.25, 0.20],     # Claude good for math
+            'science': [0.30, 0.25, 0.30, 0.15],  # ChatGPT/Gemini for science
+            'cs': [0.25, 0.30, 0.20, 0.25],       # Claude/Copilot for coding
+            'history': [0.30, 0.20, 0.35, 0.15],  # Gemini for research
+        }
+
+        # Sample FRQ responses
+        frq_responses = [
+            "I believe AI policies need to strike a balance between preventing academic dishonesty and allowing students to learn how to use AI as a tool. Rather than banning AI completely, I think we should learn how to use it ethically and responsibly.",
+            "I believe AI policies should focus on helping students learn responsibly. AI should support understanding, brainstorming, and feedback without replacing original thinking or academic honesty.",
+            "AI should be allowed sometimes in classes as a way for students to enhance their learning.",
+            "I would want to use AI to provide examples and simplify concepts that I don't understand.",
+            "I want to use AI effectively to learn by using examples and practice problems.",
+            "AI should be allowed to use in classes. AI can act as a tutor to help students learn information rather than doing their homework for them.",
+            "AI tools should be embraced in education as they represent the future of work. Learning to use them effectively is a valuable skill.",
+            "I think it's important to cite when I've used AI and be transparent about how I've incorporated it into my work.",
+            "AI should enhance my learning, not replace it. I would still write my own original responses and do my own critical thinking.",
+            "Schools should teach students how to use AI responsibly rather than banning it outright. AI literacy is becoming essential.",
+            "I use AI to check my work and get feedback, but I always do the initial thinking myself.",
+            "AI helps me understand difficult concepts by explaining them in different ways until I get it.",
+            "I think AI should be allowed for research and brainstorming, but not for writing final answers.",
+            "Using AI as a study buddy has helped me learn more efficiently and retain information better.",
+            "AI policies should differentiate between using AI to learn vs. using AI to cheat.",
+            "I appreciate AI for helping me overcome writer's block and generate ideas to build upon.",
+            "Schools need to adapt to the reality that AI is everywhere. Teaching ethical use is more practical than banning it.",
+            "AI has made learning more accessible for students who struggle with traditional teaching methods.",
+            "I use AI to get unstuck when I'm confused, then I work through the problem myself.",
+            "The key is transparency - students should disclose when and how they use AI in their work.",
         ]
 
-        # Staged survey responses with tool preferences
-        responses_data = [
-            {
-                "username": "alice_student",
-                "uses_ai": "Yes",
-                "policy_perspective": "I believe AI policies need to strike a balance between preventing academic dishonesty and allowing students to learn how to use AI as a tool. Rather than banning AI completely, I think we should learn how to use it ethically and responsibly.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "ChatGPT",
-                    "math": "Claude",
-                    "science": "ChatGPT",
-                    "cs": "Claude",
-                    "history": "Gemini"
-                }
-            },
-            {
-                "username": "bob_learner",
-                "uses_ai": "Yes",
-                "policy_perspective": "I believe AI policies should focus on helping students learn responsibly. AI should support understanding, brainstorming, and feedback without replacing original thinking or academic honesty.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "ChatGPT",
-                    "math": "Claude",
-                    "science": "Claude",
-                    "cs": "Gemini",
-                    "history": "Gemini"
-                }
-            },
-            {
-                "username": "charlie_coder",
-                "uses_ai": "Yes",
-                "policy_perspective": "AI should be allowed sometimes in classes as a way for students to enhance their learning.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "Claude",
-                    "math": "ChatGPT",
-                    "science": "Gemini",
-                    "cs": "Claude",
-                    "history": "ChatGPT"
-                }
-            },
-            {
-                "username": "diana_dev",
-                "uses_ai": "Yes",
-                "policy_perspective": "I would want to use AI to provide examples and simplify concepts that I don't understand.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "ChatGPT",
-                    "math": "Claude",
-                    "science": "Claude",
-                    "cs": "Gemini",
-                    "history": "Gemini"
-                }
-            },
-            {
-                "username": "evan_engineer",
-                "uses_ai": "Yes",
-                "policy_perspective": "I want to use AI effectively to learn by using examples and practice problems.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "ChatGPT",
-                    "math": "Gemini",
-                    "science": "ChatGPT",
-                    "cs": "Gemini",
-                    "history": "Gemini"
-                }
-            },
-            {
-                "username": "fiona_future",
-                "uses_ai": "Yes",
-                "policy_perspective": "AI should be allowed to use in classes. AI can act as a tutor to help students learn information rather than doing their homework for them.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "Claude",
-                    "math": "Claude",
-                    "science": "Gemini",
-                    "cs": "Claude",
-                    "history": "Copilot"
-                }
-            },
-            {
-                "username": "george_geek",
-                "uses_ai": "Yes",
-                "policy_perspective": "AI tools should be embraced in education as they represent the future of work. Learning to use them effectively is a valuable skill.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "ChatGPT",
-                    "math": "Copilot",
-                    "science": "ChatGPT",
-                    "cs": "Copilot",
-                    "history": "Copilot"
-                }
-            },
-            {
-                "username": "hannah_hacker",
-                "uses_ai": "Yes",
-                "policy_perspective": "I think it's important to cite when I've used AI and be transparent about how I've incorporated it into my work.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "Gemini",
-                    "math": "Claude",
-                    "science": "Claude",
-                    "cs": "Gemini",
-                    "history": "Gemini"
-                }
-            },
-            {
-                "username": "ivan_innovator",
-                "uses_ai": "Yes",
-                "policy_perspective": "AI should enhance my learning, not replace it. I would still write my own original responses and do my own critical thinking.",
-                "badge_awarded": True,
-                "preferences": {
-                    "english": "Gemini",
-                    "math": "ChatGPT",
-                    "science": "Gemini",
-                    "cs": "Claude",
-                    "history": "ChatGPT"
-                }
-            },
-        ]
+        # Create 100 users and responses
+        for i in range(1, 101):
+            username = f"student_{i:03d}"
+            email = f"student{i}@school.edu"
 
-        # Create users
-        users = {}
-        for user_data in users_data:
-            user = SurveyUser(username=user_data["username"], email=user_data["email"])
-            try:
-                user.create()
-                users[user_data["username"]] = user
-            except IntegrityError:
-                db.session.rollback()
-                print(f"User already exists: {user_data['username']}")
-                existing_user = SurveyUser.query.filter_by(_username=user_data["username"]).first()
-                if existing_user:
-                    users[user_data["username"]] = existing_user
+            # Check if user exists, create if not
+            survey_user = SurveyUser.query.filter_by(_username=username).first()
+            if not survey_user:
+                survey_user = SurveyUser(username=username, email=email)
+                db.session.add(survey_user)
+                db.session.commit()
 
-        # Create responses and preferences
-        for response_data in responses_data:
-            user = users.get(response_data["username"])
-            if user:
-                response = SurveyResponse(
-                    user_id=user.id,
-                    uses_ai_schoolwork=response_data["uses_ai"],
-                    policy_perspective=response_data["policy_perspective"],
-                    badge_awarded=response_data["badge_awarded"]
+            # Check if user already has a response
+            existing_response = SurveyResponse.query.filter_by(user_id=survey_user.id).first()
+            if existing_response:
+                continue
+
+            # 85% say Yes to using AI, 15% say No
+            uses_ai = "Yes" if random.random() < 0.85 else "No"
+
+            # Random FRQ response
+            frq = random.choice(frq_responses)
+
+            # Create survey response
+            response = SurveyResponse(
+                user_id=survey_user.id,
+                uses_ai_schoolwork=uses_ai,
+                policy_perspective=frq,
+                badge_awarded=True
+            )
+            db.session.add(response)
+            db.session.commit()
+
+            # Create AI tool preferences for each subject using weighted random
+            for subject, weights in subject_weights.items():
+                ai_tool = random.choices(ai_tools, weights=weights, k=1)[0]
+                preference = AIToolPreference(
+                    response_id=response.id,
+                    subject=subject,
+                    ai_tool=ai_tool
                 )
-                try:
-                    response.create()
+                db.session.add(preference)
 
-                    # Create AI tool preferences for each subject
-                    for subject, ai_tool in response_data["preferences"].items():
-                        preference = AIToolPreference(
-                            response_id=response.id,
-                            subject=subject,
-                            ai_tool=ai_tool
-                        )
-                        preference.create()
+            db.session.commit()
 
-                except IntegrityError:
-                    db.session.rollback()
-                    print(f"Response already exists for user: {response_data['username']}")
+        print(f"Initialized {SurveyResponse.query.count()} survey responses")
