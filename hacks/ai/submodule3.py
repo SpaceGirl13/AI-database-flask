@@ -13,6 +13,32 @@ game_api = Blueprint('game_api', __name__)
 QUESTIONS_FILE = 'game_questions.json'
 SCORES_FILE = 'game_scores.json'
 
+# Badge definitions (matching badge.py)
+BADGE_DEFINITIONS = {
+    'super_smart_genius': {
+        'name': 'Super Smart Genius',
+        'description': 'Ranked among top performers in the platform',
+        'requirement': 'Make the Leaderboard',
+        'type': 'special',
+        'image_url': 'https://github.com/user-attachments/assets/6a96f46c-b926-4c44-8926-1ffbba007a05'
+    },
+    'prodigy_problem_solver': {
+        'name': 'Prodigy Problem Solver',
+        'description': 'Applied AI knowledge to solve real-world challenges',
+        'requirement': 'Complete Submodule 3',
+        'type': 'submodule',
+        'image_url': 'https://github.com/user-attachments/assets/d85f749c-2380-4427-96af-20b462e65514'
+    }
+}
+
+def get_badge_info(badge_id):
+    """Get complete badge information including image URL"""
+    if badge_id in BADGE_DEFINITIONS:
+        badge_info = BADGE_DEFINITIONS[badge_id].copy()
+        badge_info['id'] = badge_id
+        return badge_info
+    return None
+
 def load_questions():
     """Load questions from database file"""
     if os.path.exists(QUESTIONS_FILE):
@@ -219,8 +245,12 @@ def save_score():
         top_10_uids = [s.get('uid') for s in sorted_scores[:10]]
         
         was_newly_awarded = False
+        badge_info = None
         if current_user.uid in top_10_uids:
-            was_newly_awarded = current_user.add_badge('super_smart_genius')
+            badge_id = 'super_smart_genius'
+            was_newly_awarded = current_user.add_badge(badge_id)
+            if was_newly_awarded:
+                badge_info = get_badge_info(badge_id)
 
         response_data = {
             'success': True,
@@ -228,11 +258,8 @@ def save_score():
             'badge_awarded': was_newly_awarded
         }
         
-        if was_newly_awarded:
-            response_data['badge'] = {
-                'id': 'super_smart_genius',
-                'name': 'Super Smart Genius'
-            }
+        if badge_info:
+            response_data['badge'] = badge_info
 
         return jsonify(response_data), 200
 
@@ -268,7 +295,8 @@ def complete_submodule():
     """Mark submodule 3 as complete and award badge"""
     try:
         current_user = g.current_user
-        was_newly_awarded = current_user.add_badge('prodigy_problem_solver')
+        badge_id = 'prodigy_problem_solver'
+        was_newly_awarded = current_user.add_badge(badge_id)
         
         response_data = {
             'success': True,
@@ -277,10 +305,9 @@ def complete_submodule():
         }
         
         if was_newly_awarded:
-            response_data['badge'] = {
-                'id': 'prodigy_problem_solver',
-                'name': 'Prodigy Problem Solver'
-            }
+            badge_info = get_badge_info(badge_id)
+            if badge_info:
+                response_data['badge'] = badge_info
         
         return jsonify(response_data), 200
         

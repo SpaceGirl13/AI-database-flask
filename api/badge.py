@@ -251,3 +251,11 @@ def get_badge_leaderboard():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+def get_badge_info(badge_id):
+    """Get complete badge information including image URL"""
+    if badge_id in BADGE_DEFINITIONS:
+        badge_info = BADGE_DEFINITIONS[badge_id].copy()
+        badge_info['id'] = badge_id
+        return badge_info
+    return None

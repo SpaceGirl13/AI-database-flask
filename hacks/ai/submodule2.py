@@ -15,6 +15,32 @@ prompt_api = Blueprint('prompt_api', __name__)
 # Data file for storing prompt history
 DATA_FILE = 'instance/volumes/prompt_data.json'
 
+# Badge definitions (matching badge.py)
+BADGE_DEFINITIONS = {
+    'intelligent_instructor': {
+        'name': 'Intelligent Instructor',
+        'description': 'Crafted a high-quality, effective AI prompt',
+        'requirement': 'Create a "Good" Prompt',
+        'type': 'special',
+        'image_url': 'https://github.com/user-attachments/assets/b1a7fc47-da59-4f14-a8d0-2b4c36df7cc5'
+    },
+    'perfect_prompt_engineer': {
+        'name': 'Perfect Prompt Engineer',
+        'description': 'Demonstrated expertise in crafting effective AI prompts',
+        'requirement': 'Complete Submodule 2',
+        'type': 'submodule',
+        'image_url': 'https://github.com/user-attachments/assets/65a9a19a-4f0a-4e08-8a70-cd37c1e75b7d'
+    }
+}
+
+def get_badge_info(badge_id):
+    """Get complete badge information including image URL"""
+    if badge_id in BADGE_DEFINITIONS:
+        badge_info = BADGE_DEFINITIONS[badge_id].copy()
+        badge_info['id'] = badge_id
+        return badge_info
+    return None
+
 def load_prompt_data():
     """Load prompt testing history"""
     if os.path.exists(DATA_FILE):
@@ -70,8 +96,12 @@ def test_prompt():
 
         # Award badge for creating a good prompt
         badge_awarded = False
+        badge_info = None
         if prompt_type == 'good' and hasattr(g, 'current_user') and g.current_user:
-            badge_awarded = g.current_user.add_badge('intelligent_instructor')
+            badge_id = 'intelligent_instructor'
+            badge_awarded = g.current_user.add_badge(badge_id)
+            if badge_awarded:
+                badge_info = get_badge_info(badge_id)
 
         response_data = {
             'success': True,
@@ -80,11 +110,8 @@ def test_prompt():
             'type': prompt_type
         }
         
-        if badge_awarded:
-            response_data['badge_awarded'] = {
-                'id': 'intelligent_instructor',
-                'name': 'Intelligent Instructor'
-            }
+        if badge_awarded and badge_info:
+            response_data['badge_awarded'] = badge_info
 
         return jsonify(response_data), 200
 
@@ -232,7 +259,8 @@ def complete_submodule():
     """Mark submodule 2 as complete and award badge"""
     try:
         current_user = g.current_user
-        was_newly_awarded = current_user.add_badge('perfect_prompt_engineer')
+        badge_id = 'perfect_prompt_engineer'
+        was_newly_awarded = current_user.add_badge(badge_id)
         
         response_data = {
             'success': True,
@@ -241,10 +269,9 @@ def complete_submodule():
         }
         
         if was_newly_awarded:
-            response_data['badge'] = {
-                'id': 'perfect_prompt_engineer',
-                'name': 'Perfect Prompt Engineer'
-            }
+            badge_info = get_badge_info(badge_id)
+            if badge_info:
+                response_data['badge'] = badge_info
         
         return jsonify(response_data), 200
         
