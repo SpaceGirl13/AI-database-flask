@@ -48,7 +48,7 @@ class UserSection(db.Model):
 
     # Define relationships with User and Section models
     user = db.relationship("User", backref=db.backref("user_sections_rel", cascade="all, delete-orphan"))
-    # Overlaps setting avoids cicular dependencies with Section class.
+    # Overlaps setting avoids circular dependencies with Section class.
     section = db.relationship("Section", backref=db.backref("section_users_rel", cascade="all, delete-orphan"), overlaps="users")
    
     def __init__(self, user, section):
@@ -76,7 +76,7 @@ class Section(db.Model):
     _abbreviation = db.Column(db.String(255), unique=True, nullable=False)
  
     # Define many-to-many relationship with User model through UserSection table
-    # Overlaps setting avoids cicular dependencies with UserSection class
+    # Overlaps setting avoids circular dependencies with UserSection class
     users = db.relationship('User', secondary=UserSection.__table__, lazy='subquery',
                             backref=db.backref('section_users_rel', lazy=True, viewonly=True), overlaps="section_users_rel,user_sections_rel,user")    
    
@@ -91,7 +91,7 @@ class Section(db.Model):
 
     # String representation of the Classes object
     def __repr__(self):
-        return f"Class(_id={self.id}, name={self._name}, abbreviation={self._abbreviation})"
+        return f"Section(_id={self.id}, name={self._name}, abbreviation={self._abbreviation})"
 
     # CRUD create
     def create(self):
@@ -112,7 +112,6 @@ class Section(db.Model):
         }
        
     # CRUD delete: remove self
-    # None
     def delete(self):
         db.session.delete(self)
         db.session.commit()
@@ -163,18 +162,21 @@ class User(db.Model, UserMixin):
     _badges = db.Column(db.JSON, default=list)
 
     # Define many-to-many relationship with Section model through UserSection table
-    # Overlaps setting avoids cicular dependencies with UserSection class
+    # Overlaps setting avoids circular dependencies with UserSection class
     sections = db.relationship('Section', secondary=UserSection.__table__, lazy='subquery',
                                backref=db.backref('user_sections_rel', lazy=True, viewonly=True), overlaps="user_sections_rel,section,section_users_rel,user,users")
    
     # Define one-to-one relationship with StockUser model
     stock_user = db.relationship("StockUser", backref=db.backref("users", cascade="all"), lazy=True, uselist=False)
 
-    def __init__(self, name, uid, password=app.config["DEFAULT_PASSWORD"], kasm_server_needed=False, role="User", pfp='', grade_data=None, ap_exam=None, school="Unknown", sid=None):
+    def __init__(self, name, uid, password=None, kasm_server_needed=False, role="User", pfp='', grade_data=None, ap_exam=None, school="Unknown", sid=None):
         self._name = name
         self._uid = uid
         self._email = "?"
         self._sid = sid
+        # Use default password from config if none provided
+        if password is None:
+            password = app.config.get("DEFAULT_PASSWORD", "changeme123")
         self.set_password(password)
         self.kasm_server_needed = kasm_server_needed
         self._role = role
@@ -220,7 +222,6 @@ class User(db.Model, UserMixin):
         data, status = GitHubUser().get(self._uid)
         if status == 200:
             self.email = data.get("email", "?")
-            pass
         else:
             self.email = "?"
 
@@ -490,8 +491,8 @@ class User(db.Model, UserMixin):
             if old_uid != self.uid:
                 kasm_user.delete(old_uid)
             # Create or update the user in Kasm, including a password
-            kasm_user.post(self.name, self.uid, password if password else app.config["DEFAULT_PASSWORD"])
-            # User is transtioning from non-Kasm to Kasm user, thus it requires posting all groups to Kasm
+            kasm_user.post(self.name, self.uid, password if password else app.config.get("DEFAULT_PASSWORD", "changeme123"))
+            # User is transitioning from non-Kasm to Kasm user, thus it requires posting all groups to Kasm
             if not old_kasm_server_needed:
                 kasm_user.post_groups(self.uid, [section.abbreviation for section in self.sections])
         # User is transitioning from Kasm user to non-Kasm user, thus it requires cleanup of defunct Kasm user
@@ -638,7 +639,7 @@ class User(db.Model, UserMixin):
         except Exception as e:
             # Roll back the transaction if any other exception is encountered
             db.session.rollback()
-            print(f"Unexpected error removing sections: {e}") # Log the unexpected error
+            print(f"Unexpected error removing sections: {e}")  # Log the unexpected error
             return False
        
     def set_uid(self, new_uid=None):
@@ -674,12 +675,13 @@ class User(db.Model, UserMixin):
            
     def read_stockuser(self):
         """
-        Read the stock user daata associated with the user.
+        Read the stock user data associated with the user.
         """
         if self.stock_user:
             return self.stock_user.read()
         return None
    
+
 """Database Creation and Testing """
 
 # Builds working data set for testing
@@ -727,7 +729,6 @@ def initUsers():
         u1 = User(name=app.config['ADMIN_USER'], uid=app.config['ADMIN_UID'], password=app.config['ADMIN_PASSWORD'], pfp=app.config['ADMIN_PFP'], kasm_server_needed=True, role="Admin")
         u2 = User(name=app.config['DEFAULT_USER'], uid=app.config['DEFAULT_UID'], password=app.config['DEFAULT_USER_PASSWORD'], pfp=app.config['DEFAULT_USER_PFP'])
         u3 = User(name='Nicholas Tesla', uid='niko', pfp='niko.png', role='Teacher', password=app.config['DEFAULT_USER_PASSWORD'])
-
 
         users = [u1, u2, u3]
        
