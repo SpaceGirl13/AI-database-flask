@@ -125,10 +125,10 @@ def submit_survey():
         db.session.commit()
 
         # Award badge if user is logged in
-        badge_awarded = False
+        was_newly_awarded = False
         if hasattr(g, 'current_user') and g.current_user:
-            badge_awarded = g.current_user.add_badge('sensational_surveyor')
-            response.badge_awarded = badge_awarded
+            was_newly_awarded = g.current_user.add_badge('sensational_surveyor')
+            response.badge_awarded = was_newly_awarded
             db.session.commit()
 
         # Get updated aggregated data
@@ -136,11 +136,12 @@ def submit_survey():
 
         response_data = {
             'message': 'Survey submitted successfully',
-            'data': data
+            'data': data,
+            'badge_awarded': was_newly_awarded  # Always include boolean
         }
 
-        if badge_awarded:
-            response_data['badge_awarded'] = {
+        if was_newly_awarded:  # Only include badge details if newly awarded
+            response_data['badge'] = {
                 'id': 'sensational_surveyor',
                 'name': 'Sensational Surveyor'
             }
