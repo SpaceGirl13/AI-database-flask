@@ -232,17 +232,21 @@ def complete_submodule():
     """Mark submodule 2 as complete and award badge"""
     try:
         current_user = g.current_user
-        badge_awarded = current_user.add_badge('perfect_prompt_engineer')
+        was_newly_awarded = current_user.add_badge('perfect_prompt_engineer')
         
-        return jsonify({
+        response_data = {
             'success': True,
             'message': 'Submodule 2 completed!',
-            'badge_awarded': badge_awarded,
-            'badge': {
+            'badge_awarded': was_newly_awarded
+        }
+        
+        if was_newly_awarded:
+            response_data['badge'] = {
                 'id': 'perfect_prompt_engineer',
                 'name': 'Perfect Prompt Engineer'
             }
-        }), 200
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

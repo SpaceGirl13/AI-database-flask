@@ -218,17 +218,18 @@ def save_score():
         sorted_scores = sorted(data['scores'], key=lambda x: (-x['score'], x['timestamp']))
         top_10_uids = [s.get('uid') for s in sorted_scores[:10]]
         
-        badge_awarded = False
+        was_newly_awarded = False
         if current_user.uid in top_10_uids:
-            badge_awarded = current_user.add_badge('super_smart_genius')
+            was_newly_awarded = current_user.add_badge('super_smart_genius')
 
         response_data = {
             'success': True,
-            'message': 'Score saved successfully'
+            'message': 'Score saved successfully',
+            'badge_awarded': was_newly_awarded
         }
         
-        if badge_awarded:
-            response_data['badge_awarded'] = {
+        if was_newly_awarded:
+            response_data['badge'] = {
                 'id': 'super_smart_genius',
                 'name': 'Super Smart Genius'
             }
@@ -267,17 +268,21 @@ def complete_submodule():
     """Mark submodule 3 as complete and award badge"""
     try:
         current_user = g.current_user
-        badge_awarded = current_user.add_badge('prodigy_problem_solver')
+        was_newly_awarded = current_user.add_badge('prodigy_problem_solver')
         
-        return jsonify({
+        response_data = {
             'success': True,
             'message': 'Submodule 3 completed!',
-            'badge_awarded': badge_awarded,
-            'badge': {
+            'badge_awarded': was_newly_awarded
+        }
+        
+        if was_newly_awarded:
+            response_data['badge'] = {
                 'id': 'prodigy_problem_solver',
                 'name': 'Prodigy Problem Solver'
             }
-        }), 200
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
