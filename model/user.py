@@ -22,14 +22,14 @@ def default_year():
     # If current month is between August (8) and December (12), the enrollment year is next year.
     if 7 <= current_month <= 12:
         current_year = current_year + 1
-    return current_year 
+    return current_year
 
 """ Database Models """
 
 ''' Tutorial: https://www.sqlalchemy.org/library.html#tutorials, try to get into Python shell and follow along '''
 
 class UserSection(db.Model):
-    """ 
+    """
     UserSection Model
 
     A many-to-many relationship between the 'users' and 'sections' tables.
@@ -40,16 +40,16 @@ class UserSection(db.Model):
         year (Column): An integer representing the year the user enrolled with the section. Defaults to the current year.
     """
     __tablename__ = 'user_sections'
-    
+   
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
     section_id = db.Column(db.Integer, db.ForeignKey('sections.id'), primary_key=True)
     year = db.Column(db.Integer)
 
-    # Define relationships with User and Section models 
+    # Define relationships with User and Section models
     user = db.relationship("User", backref=db.backref("user_sections_rel", cascade="all, delete-orphan"))
     # Overlaps setting avoids cicular dependencies with Section class.
     section = db.relationship("Section", backref=db.backref("section_users_rel", cascade="all, delete-orphan"), overlaps="users")
-    
+   
     def __init__(self, user, section):
         self.user = user
         self.section = section
@@ -59,9 +59,9 @@ class UserSection(db.Model):
 class Section(db.Model):
     """
     Section Model
-    
+   
     The Section class represents a section within the application, such as a class, department or group.
-    
+   
     Attributes:
         id (db.Column): The primary key, an integer representing the unique identifier for the section.
         _name (db.Column): A string representing the name of the section. It is not unique and cannot be null.
@@ -72,17 +72,17 @@ class Section(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     _name = db.Column(db.String(255), unique=False, nullable=False)
     _abbreviation = db.Column(db.String(255), unique=True, nullable=False)
-  
+ 
     # Define many-to-many relationship with User model through UserSection table
     # Overlaps setting avoids cicular dependencies with UserSection class
     users = db.relationship('User', secondary=UserSection.__table__, lazy='subquery',
                             backref=db.backref('section_users_rel', lazy=True, viewonly=True), overlaps="section_users_rel,user_sections_rel,user")    
-    
+   
     # Constructor
     def __init__(self, name, abbreviation):
-        self._name = name 
+        self._name = name
         self._abbreviation = abbreviation
-        
+       
     @property
     def abbreviation(self):
         return self._abbreviation
@@ -108,7 +108,7 @@ class Section(db.Model):
             "name": self._name,
             "abbreviation": self._abbreviation
         }
-        
+       
     # CRUD delete: remove self
     # None
     def delete(self):
@@ -159,11 +159,11 @@ class User(db.Model, UserMixin):
     _school = db.Column(db.String(255), default="Unknown", nullable=True)
     _badges = db.Column(db.JSON, default=list)
 
-    # Define many-to-many relationship with Section model through UserSection table 
+    # Define many-to-many relationship with Section model through UserSection table
     # Overlaps setting avoids cicular dependencies with UserSection class
     sections = db.relationship('Section', secondary=UserSection.__table__, lazy='subquery',
                                backref=db.backref('user_sections_rel', lazy=True, viewonly=True), overlaps="user_sections_rel,section,section_users_rel,user,users")
-    
+   
     # Define one-to-one relationship with StockUser model
     stock_user = db.relationship("StockUser", backref=db.backref("users", cascade="all"), lazy=True, uselist=False)
 
@@ -199,19 +199,19 @@ class User(db.Model, UserMixin):
     @property
     def is_anonymous(self):
         return False
-    
+   
     # validate uid is a unique GitHub username
     @property
     def email(self):
         return self._email
-    
+   
     @email.setter
     def email(self, email):
         if email is None or email == "":
             self._email = "?"
         else:
             self._email = email
-        
+       
     def set_email(self):
         """Set the email of the user based on the UID, the GitHub username."""
         data, status = GitHubUser().get(self._uid)
@@ -293,7 +293,7 @@ class User(db.Model, UserMixin):
 
     def is_teacher(self):
         return self._role == "Teacher"
-    
+   
     # getter method for profile picture
     @property
     def pfp(self):
@@ -347,22 +347,50 @@ class User(db.Model, UserMixin):
         self._badges = value
         db.session.commit()
 
-    def add_badge(self, badge_name):
-        """Add a badge to user if they don't have it already"""
+    def add_badge(self, badge_id):
+        """
+        Add a badge to the user if they don't already have it.
+        Returns True ONLY if this is a NEW badge award.
+        Returns False if the badge already exists.
+       
+        :param badge_id: The unique identifier for the badge
+        :return: True if badge was newly awarded, False if already exists
+        """
+        # Ensure badges is initialized as a list
         current_badges = self.badges if self.badges else []
-        if badge_name not in current_badges:
-            current_badges.append(badge_name)
-            self._badges = current_badges
+       
+        # Check if badge already exists
+        if badge_id in current_badges:
+            return False  # Badge already awarded - don't show notification
+       
+        # Add new badge
+        current_badges.append(badge_id)
+        self._badges = current_badges
+       
+        # Commit to database
+        try:
             db.session.commit()
-            return True
-        return False
+            return True  # NEW badge awarded - show notification
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error awarding badge: {e}")
+            return False
 
-    def has_badge(self, badge_name):
-        """Check if user has a specific badge"""
-        return badge_name in (self.badges if self.badges else [])
+    def has_badge(self, badge_id):
+        """
+        Check if user has a specific badge.
+       
+        :param badge_id: The unique identifier for the badge
+        :return: True if user has the badge, False otherwise
+        """
+        return badge_id in (self.badges if self.badges else [])
 
     def read_badges(self):
-        """Return badges in a readable format"""
+        """
+        Return badges in a readable format.
+       
+        :return: Dictionary with badges list and count
+        """
         return {
             'badges': self.badges if self.badges else [],
             'badge_count': len(self.badges) if self.badges else 0
@@ -402,7 +430,7 @@ class User(db.Model, UserMixin):
         sections = self.read_sections()
         data.update(sections)
         return data
-        
+       
     # CRUD update: updates user name, password, phone
     # returns self
     def update(self, inputs):
@@ -473,7 +501,7 @@ class User(db.Model, UserMixin):
             db.session.rollback()
             return None
         return self
-    
+   
     # CRUD delete: remove self
     # None
     def delete(self):
@@ -483,8 +511,8 @@ class User(db.Model, UserMixin):
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
-        return None   
-    
+        return None  
+   
     def save_pfp(self, image_data, filename):
         """For saving profile picture."""
         try:
@@ -497,22 +525,22 @@ class User(db.Model, UserMixin):
             self.update({"pfp": filename})
         except Exception as e:
             raise e
-        
+       
     def delete_pfp(self):
         """Deletes profile picture from user record."""
         self.pfp = None
         db.session.commit()
-        
+       
     def add_section(self, section):
         # Query for the section using the provided abbreviation
         found = any(s.id == section.id for s in self.sections)
-        
+       
         # Check if the section was found
         if not found:
             # Add the section to the user's sections
             user_section = UserSection(user=self, section=section)
             db.session.add(user_section)
-            
+           
             # Commit the changes to the database
             db.session.commit()
         else:
@@ -522,7 +550,7 @@ class User(db.Model, UserMixin):
         if self.kasm_server_needed:
             KasmUser().post_groups(self.uid, [section.abbreviation])
         return self
-    
+   
     def add_sections(self, sections):
         """
         Add multiple sections to the user's profile.
@@ -541,20 +569,20 @@ class User(db.Model, UserMixin):
             self.add_section(section_obj)
         # Return the user object with the added sections
         return self
-        
+       
     def read_sections(self):
         """Reads the sections associated with the user."""
         sections = []
-        # The user_sections_rel backref provides access to the many-to-many relationship data 
+        # The user_sections_rel backref provides access to the many-to-many relationship data
         if self.user_sections_rel:
             for user_section in self.user_sections_rel:
-                # This user_section backref "row" can be used to access section methods 
+                # This user_section backref "row" can be used to access section methods
                 section_data = user_section.section.read()
                 # Extract the year from the relationship data  
                 section_data['year'] = user_section.year  
                 sections.append(section_data)
-        return {"sections": sections} 
-    
+        return {"sections": sections}
+   
     def update_section(self, section_data):
         """
         Updates the year enrolled for a given section.
@@ -578,7 +606,7 @@ class User(db.Model, UserMixin):
             return True  # Update successful
         else:
             return False  # Section not found
-    
+   
     def remove_sections(self, section_abbreviations):
         """
         Remove sections based on provided abbreviations.
@@ -609,7 +637,7 @@ class User(db.Model, UserMixin):
             db.session.rollback()
             print(f"Unexpected error removing sections: {e}") # Log the unexpected error
             return False
-        
+       
     def set_uid(self, new_uid=None):
         """
         Update the user's directory based on the new UID provided.
@@ -634,13 +662,13 @@ class User(db.Model, UserMixin):
 
     def add_stockuser(self):
         """
-        Add 1-to-1 stock user to the user's record. 
+        Add 1-to-1 stock user to the user's record.
         """
         if not self.stock_user:
             self.stock_user = StockUser(uid=self._uid, stockmoney=100000)
             db.session.commit()
-        return self 
-            
+        return self
+           
     def read_stockuser(self):
         """
         Read the stock user daata associated with the user.
@@ -648,7 +676,7 @@ class User(db.Model, UserMixin):
         if self.stock_user:
             return self.stock_user.read()
         return None
-    
+   
 """Database Creation and Testing """
 
 # Builds working data set for testing
@@ -657,7 +685,7 @@ def initUsers():
         """Create database and tables"""
         db.create_all()
         """Tester data for table"""
-        
+       
         default_grade_data = {
             'grade': 'A',
             'attendance': 5,
@@ -699,7 +727,7 @@ def initUsers():
 
 
         users = [u1, u2, u3]
-        
+       
         for user in users:
             try:
                 user.create()
@@ -713,7 +741,7 @@ def initUsers():
         s3 = Section(name='Engineering Robotics', abbreviation='Robotics')
         s4 = Section(name='Computer Science and Software Engineering', abbreviation='CSSE')
         sections = [s1, s2, s3, s4]
-        
+       
         for section in sections:
             try:
                 section.create()    
@@ -721,7 +749,7 @@ def initUsers():
                 '''fails with bad or duplicate data'''
                 db.session.remove()
                 print(f"Records exist, duplicate email, or error: {section.name}")
-            
+           
         u1.add_section(s1)
         u1.add_section(s2)
         u2.add_section(s2)
