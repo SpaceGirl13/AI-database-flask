@@ -17,12 +17,14 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install gunicorn
 
+# Make start script executable
+RUN chmod +x start.sh
+
 # Set environment variables
-ENV FLASK_ENV=production \
-    GUNICORN_CMD_ARGS="--workers=5 --threads=2 --bind=0.0.0.0:8402 --timeout=30 --access-logfile -"
+ENV FLASK_ENV=production
 
 # Expose application port
 EXPOSE 8402
 
-# Start Gunicorn server
-CMD ["gunicorn", "main:app", "./start.sh"]
+# Run migration then start Gunicorn
+CMD python migrate_db.py && gunicorn main:app --workers=5 --threads=2 --bind=0.0.0.0:8402 --timeout=30 --access-logfile -
