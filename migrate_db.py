@@ -22,34 +22,68 @@ def migrate():
         # Import ALL your model files here so db.create_all() knows about them
         print("📦 Importing all models...")
         
-        # Import all models from your model directory
-        from model.user import User, Section, UserSection
-        print("   ✓ User models imported")
+        # Import User models
+        try:
+            from model.user import User, Section, UserSection
+            print("   ✓ User models imported")
+        except Exception as e:
+            print(f"   ⚠️  User models error: {e}")
         
-        from model.stocks import StockUser
-        print("   ✓ Stock models imported")
+        # Import Stock models
+        try:
+            from model.stocks import StockUser
+            print("   ✓ Stock models imported")
+        except Exception as e:
+            print(f"   ⚠️  Stock models error: {e}")
         
-        from model.questions import Question
-        print("   ✓ Question model imported")
+        # Import Question model
+        try:
+            from model.questions import Question
+            print("   ✓ Question model imported")
+        except Exception as e:
+            print(f"   ⚠️  Question model error: {e}")
         
-        from model.feedback import Feedback
-        print("   ✓ Feedback model imported")
+        # Import Feedback model
+        try:
+            from model.feedback import Feedback
+            print("   ✓ Feedback model imported")
+        except Exception as e:
+            print(f"   ⚠️  Feedback model error: {e}")
         
-        from model.classroom import Classroom, ClassroomStudent
-        print("   ✓ Classroom models imported")
+        # Import Classroom models (flexible - import whatever exists)
+        try:
+            from model.classroom import *
+            print("   ✓ Classroom models imported")
+        except Exception as e:
+            print(f"   ⚠️  Classroom models error: {e}")
         
-        from model.microblog import Microblog
-        print("   ✓ Microblog model imported")
+        # Import Microblog model
+        try:
+            from model.microblog import Microblog
+            print("   ✓ Microblog model imported")
+        except Exception as e:
+            print(f"   ⚠️  Microblog model error: {e}")
         
-        from model.post import Post
-        print("   ✓ Post model imported")
+        # Import Post model
+        try:
+            from model.post import Post
+            print("   ✓ Post model imported")
+        except Exception as e:
+            print(f"   ⚠️  Post model error: {e}")
         
-        from model.study import Study
-        print("   ✓ Study model imported")
+        # Import Study model
+        try:
+            from model.study import Study
+            print("   ✓ Study model imported")
+        except Exception as e:
+            print(f"   ⚠️  Study model error: {e}")
         
-        # Import survey models - creates ai_tool_preferences table
-        from model.survey_results import AIToolPreference, SurveyResponse
-        print("   ✓ Survey models imported (ai_tool_preferences)")
+        # Import Survey models - creates ai_tool_preferences table
+        try:
+            from model.survey_results import *
+            print("   ✓ Survey models imported (ai_tool_preferences)")
+        except Exception as e:
+            print(f"   ⚠️  Survey models error: {e}")
         
         # Create all tables
         with app.app_context():
