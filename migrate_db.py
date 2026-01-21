@@ -2,6 +2,24 @@
 import sqlite3
 import os
 
+# Import models at module level (preferred for SQLAlchemy)
+try:
+    from __init__ import app, db
+    from model.user import User, Section, UserSection
+    from model.stocks import StockUser
+    from model.questions import Question
+    from model.feedback import Feedback
+    from model.microblog import Microblog
+    from model.post import Post
+    from model.study import Study
+    
+    # Import entire modules to get all their models
+    import model.classroom
+    import model.survey_results
+except ImportError as e:
+    print(f"Import warning at module level: {e}")
+    pass
+
 def migrate():
     """
     Comprehensive migration script that:
@@ -15,75 +33,9 @@ def migrate():
     print("=" * 60)
     
     # STEP 1: Import all models and create tables
-    print("\n📋 Step 1: Importing models and creating tables...")
+    print("\n📋 Step 1: Creating database tables from models...")
     try:
-        from __init__ import app, db
-        
-        # Import ALL your model files here so db.create_all() knows about them
-        print("📦 Importing all models...")
-        
-        # Import User models
-        try:
-            from model.user import User, Section, UserSection
-            print("   ✓ User models imported")
-        except Exception as e:
-            print(f"   ⚠️  User models error: {e}")
-        
-        # Import Stock models
-        try:
-            from model.stocks import StockUser
-            print("   ✓ Stock models imported")
-        except Exception as e:
-            print(f"   ⚠️  Stock models error: {e}")
-        
-        # Import Question model
-        try:
-            from model.questions import Question
-            print("   ✓ Question model imported")
-        except Exception as e:
-            print(f"   ⚠️  Question model error: {e}")
-        
-        # Import Feedback model
-        try:
-            from model.feedback import Feedback
-            print("   ✓ Feedback model imported")
-        except Exception as e:
-            print(f"   ⚠️  Feedback model error: {e}")
-        
-        # Import Classroom models (flexible - import whatever exists)
-        try:
-            from model.classroom import *
-            print("   ✓ Classroom models imported")
-        except Exception as e:
-            print(f"   ⚠️  Classroom models error: {e}")
-        
-        # Import Microblog model
-        try:
-            from model.microblog import Microblog
-            print("   ✓ Microblog model imported")
-        except Exception as e:
-            print(f"   ⚠️  Microblog model error: {e}")
-        
-        # Import Post model
-        try:
-            from model.post import Post
-            print("   ✓ Post model imported")
-        except Exception as e:
-            print(f"   ⚠️  Post model error: {e}")
-        
-        # Import Study model
-        try:
-            from model.study import Study
-            print("   ✓ Study model imported")
-        except Exception as e:
-            print(f"   ⚠️  Study model error: {e}")
-        
-        # Import Survey models - creates ai_tool_preferences table
-        try:
-            from model.survey_results import *
-            print("   ✓ Survey models imported (ai_tool_preferences)")
-        except Exception as e:
-            print(f"   ⚠️  Survey models error: {e}")
+        print("📦 Models loaded from module-level imports")
         
         # Create all tables
         with app.app_context():
