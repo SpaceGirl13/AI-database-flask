@@ -1,39 +1,51 @@
 {
   "english": {
-    "ChatGPT": 5,
+    "ChatGPT": 8,
     "Claude": 2,
     "Gemini": 2,
     "Copilot": 0
   },
   "math": {
-    "ChatGPT": 2,
-    "Claude": 5,
-    "Gemini": 1,
+    "ChatGPT": 3,
+    "Claude": 6,
+    "Gemini": 2,
     "Copilot": 1
   },
   "science": {
-    "ChatGPT": 3,
-    "Claude": 3,
-    "Gemini": 3,
+    "ChatGPT": 4,
+    "Claude": 4,
+    "Gemini": 4,
     "Copilot": 0
   },
   "cs": {
-    "ChatGPT": 0,
+    "ChatGPT": 1,
     "Claude": 4,
-    "Gemini": 4,
-    "Copilot": 1
+    "Gemini": 5,
+    "Copilot": 2
   },
   "history": {
-    "ChatGPT": 1,
-    "Claude": 2,
-    "Gemini": 5,
+    "ChatGPT": 2,
+    "Claude": 3,
+    "Gemini": 6,
     "Copilot": 1
   },
   "useAI": {
-    "Yes": 9,
+    "Yes": 12,
     "No": 0
   },
   "frqs": [
+    {
+      "text": "I believe AI policies need to strike a balance between preventing academic dishonesty and allowing students to learn how to use AI as a tool. Rather than banning AI completely, I think we should learn how to use it ethically and responsibly. I would want to use AI as a learning aid\u2014for example, to help me understand difficult concepts, brainstorm ideas, or check my work for errors\u2014but I would still write my own original responses and do my own critical thinking. AI should enhance my learning, not replace it. I think it's important to cite when I've used AI and be transparent about how I've incorporated it into my work.",
+      "timestamp": "2026-01-20T22:28:38.631649"
+    },
+    {
+      "text": "I believe AI policies need to strike a balance between preventing academic dishonesty and allowing students to learn how to use AI as a tool. Rather than banning AI completely, I think we should learn how to use it ethically and responsibly. I would want to use AI as a learning aid\u2014for example, to help me understand difficult concepts, brainstorm ideas, or check my work for errors\u2014but I would still write my own original responses and do my own critical thinking. AI should enhance my learning, not replace it. I think it's important to cite when I've used AI and be transparent about how I've incorporated it into my work.",
+      "timestamp": "2026-01-20T22:27:22.635860"
+    },
+    {
+      "text": "I believe AI policies need to strike a balance between preventing academic dishonesty and allowing students to learn how to use AI as a tool. Rather than banning AI completely, I think we should learn how to use it ethically and responsibly. I would want to use AI as a learning aid\u2014for example, to help me understand difficult concepts, brainstorm ideas, or check my work for errors\u2014but I would still write my own original responses and do my own critical thinking. AI should enhance my learning, not replace it. I think it's important to cite when I've used AI and be transparent about how I've incorporated it into my work.",
+      "timestamp": "2026-01-20T21:56:31.243836"
+    },
     {
       "text": "I believe AI policies need to strike a balance between preventing academic dishonesty and allowing students to learn how to use AI as a tool. Rather than banning AI completely, I think we should learn how to use it ethically and responsibly. I would want to use AI as a learning aid\u2014for example, to help me understand difficult concepts, brainstorm ideas, or check my work for errors\u2014but I would still write my own original responses and do my own critical thinking. AI should enhance my learning, not replace it. I think it's important to cite when I've used AI and be transparent about how I've incorporated it into my work.",
       "timestamp": "2026-01-15T19:47:46.171052"
