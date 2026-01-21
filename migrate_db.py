@@ -5,29 +5,64 @@ import os
 def migrate():
     """
     Comprehensive migration script that:
-    1. Creates all tables from SQLAlchemy models (db.create_all)
-    2. Adds the _badges column to users table if missing
-    3. Runs any other custom migrations
+    1. Imports all models
+    2. Creates all tables from SQLAlchemy models (db.create_all)
+    3. Adds the _badges column to users table if missing
     """
     
     print("=" * 60)
     print("🔧 Starting Database Migration...")
     print("=" * 60)
     
-    # STEP 1: Create all tables from models using SQLAlchemy
-    print("\n📋 Step 1: Creating all database tables from models...")
+    # STEP 1: Import all models and create tables
+    print("\n📋 Step 1: Importing models and creating tables...")
     try:
         from __init__ import app, db
+        
+        # Import ALL your model files here so db.create_all() knows about them
+        print("📦 Importing all models...")
+        
+        # Import all models from your model directory
+        from model.user import User, Section, UserSection
+        print("   ✓ User models imported")
+        
+        from model.stocks import StockUser
+        print("   ✓ Stock models imported")
+        
+        from model.questions import Question
+        print("   ✓ Question model imported")
+        
+        from model.feedback import Feedback
+        print("   ✓ Feedback model imported")
+        
+        from model.classroom import Classroom, ClassroomStudent
+        print("   ✓ Classroom models imported")
+        
+        from model.microblog import Microblog
+        print("   ✓ Microblog model imported")
+        
+        from model.post import Post
+        print("   ✓ Post model imported")
+        
+        from model.study import Study
+        print("   ✓ Study model imported")
+        
+        # Import survey models - creates ai_tool_preferences table
+        from model.survey_results import AIToolPreference, SurveyResponse
+        print("   ✓ Survey models imported (ai_tool_preferences)")
+        
+        # Create all tables
         with app.app_context():
-            # This creates ALL tables defined in your models
             db.create_all()
-            print("✅ All database tables created/updated successfully")
+            print("\n✅ All database tables created/updated successfully")
             
             # Print all table names
             from sqlalchemy import inspect
             inspector = inspect(db.engine)
             tables = inspector.get_table_names()
-            print(f"📊 Tables in database: {', '.join(tables)}")
+            print(f"📊 Tables in database ({len(tables)} total):")
+            for table in sorted(tables):
+                print(f"   - {table}")
             
     except Exception as e:
         print(f"❌ Error creating tables: {e}")
@@ -41,10 +76,8 @@ def migrate():
     # Create directories if they don't exist
     os.makedirs('instance/volumes', exist_ok=True)
     
-    # Skip column migration if database doesn't exist yet
     if not os.path.exists(db_path):
         print("⚠️  Database file doesn't exist yet, skipping column migrations")
-        print("   (Tables will be created on first app run)")
         print("=" * 60)
         return
     
@@ -77,8 +110,6 @@ def migrate():
         
     except Exception as e:
         print(f"⚠️  Column migration error: {e}")
-        import traceback
-        traceback.print_exc()
     
     print("\n" + "=" * 60)
     print("✅ Database Migration Complete!")
