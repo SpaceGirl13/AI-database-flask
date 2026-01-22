@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify, g
 from datetime import datetime
 from model.user import User
-from model.survey_results import SurveyUser, SurveyResponse, AIToolPreference
+from model.survey_results import SurveyResponse, AIToolPreference
 from api.jwt_authorize import optional_token
 from __init__ import db
 from sqlalchemy import func
@@ -53,9 +53,8 @@ def get_aggregated_data():
     ).order_by(SurveyResponse._completed_at.desc()).limit(20).all()
 
     for response in recent_responses:
-        # Get the username for this response
-        survey_user = SurveyUser.query.get(response.user_id)
-        username = survey_user._username if survey_user else 'anonymous'
+        # Username is now directly in the response
+        username = response.username if response.username else 'anonymous'
 
         data['frqs'].append({
             'text': response._policy_perspective,
@@ -88,23 +87,21 @@ def submit_survey():
             if field not in form_data or not form_data[field]:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
-        # Get or create user
+        # Get username
         username = 'anonymous'
         if hasattr(g, 'current_user') and g.current_user:
             username = g.current_user.uid
         else:
             username = f'anonymous_{datetime.now().strftime("%Y%m%d%H%M%S%f")}'
 
-        # Check if user exists, create if not
-        survey_user = SurveyUser.query.filter_by(_username=username).first()
-        if not survey_user:
-            survey_user = SurveyUser(username=username)
-            db.session.add(survey_user)
-            db.session.commit()
+        # Get next user_id
+        max_user_id = db.session.query(func.max(SurveyResponse.user_id)).scalar() or 0
+        new_user_id = max_user_id + 1
 
-        # Create survey response
+        # Create survey response with username directly
         response = SurveyResponse(
-            user_id=survey_user.id,
+            user_id=new_user_id,
+            username=username,
             uses_ai_schoolwork=form_data['useAI'],
             policy_perspective=form_data['frq'],
             badge_awarded=False

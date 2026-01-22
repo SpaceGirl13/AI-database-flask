@@ -32,10 +32,7 @@
     <!-- Tab Navigation -->
     <ul class="nav nav-tabs" id="tableTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="survey-users-tab" data-bs-toggle="tab" data-bs-target="#survey-users" type="button">Survey Users</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="survey-responses-tab" data-bs-toggle="tab" data-bs-target="#survey-responses" type="button">Survey Responses</button>
+            <button class="nav-link active" id="survey-responses-tab" data-bs-toggle="tab" data-bs-target="#survey-responses" type="button">Survey Responses</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="ai-preferences-tab" data-bs-toggle="tab" data-bs-target="#ai-preferences" type="button">AI Tool Preferences</button>
@@ -51,35 +48,16 @@
     <!-- Tab Content -->
     <div class="tab-content" id="tableTabsContent">
 
-        <!-- Survey Users Tab -->
-        <div class="tab-pane fade show active" id="survey-users" role="tabpanel">
-            <h3>Survey Users</h3>
-            <div class="table-container">
-                <table class="table table-striped table-hover" id="surveyUsersTable">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>ID</th>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="surveyUsersBody">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
         <!-- Survey Responses Tab -->
-        <div class="tab-pane fade" id="survey-responses" role="tabpanel">
-            <h3>Survey Responses</h3>
+        <div class="tab-pane fade show active" id="survey-responses" role="tabpanel">
+            <h3>Survey Responses <small class="text-muted">(100 rows)</small></h3>
             <div class="table-container">
                 <table class="table table-striped table-hover" id="surveyResponsesTable">
                     <thead class="table-dark">
                         <tr>
                             <th>ID</th>
                             <th>User ID</th>
+                            <th>Username</th>
                             <th>Uses AI for Schoolwork</th>
                             <th>Policy Perspective</th>
                             <th>Completed At</th>
@@ -96,15 +74,14 @@
 
         <!-- AI Tool Preferences Tab -->
         <div class="tab-pane fade" id="ai-preferences" role="tabpanel">
-            <h3>AI Tool Preferences</h3>
+            <h3>AI Tool Preferences <small class="text-muted">(100 rows)</small></h3>
             <div class="table-container">
                 <table class="table table-striped table-hover" id="aiPreferencesTable">
                     <thead class="table-dark">
                         <tr>
-                            <th>ID</th>
-                            <th>Response ID</th>
-                            <th>Subject</th>
-                            <th>AI Tool</th>
+                            <th>User ID</th>
+                            <th>Username</th>
+                            <th>AI Tool Preferences</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -139,16 +116,19 @@
 
         <!-- Leaderboard Tab -->
         <div class="tab-pane fade" id="leaderboard" role="tabpanel">
-            <h3>Badge Leaderboard</h3>
+            <h3>Game Leaderboard (Submodule 3)</h3>
             <div class="table-container">
                 <table class="table table-striped table-hover" id="leaderboardTable">
                     <thead class="table-dark">
                         <tr>
                             <th>Rank</th>
+                            <th>ID</th>
                             <th>UID</th>
-                            <th>Name</th>
-                            <th>Badge Count</th>
-                            <th>Badges</th>
+                            <th>Player Name</th>
+                            <th>Score</th>
+                            <th>Correct Answers</th>
+                            <th>Timestamp</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="leaderboardBody">
@@ -183,79 +163,27 @@
     const API_BASE = '/api/admin';
     let currentEditTable = '';
     let currentEditId = null;
+    let currentEditData = null;
 
     // Load all data on page load
     document.addEventListener('DOMContentLoaded', function() {
-        loadSurveyUsers();
         loadSurveyResponses();
         loadAIPreferences();
         loadQuestions();
         loadLeaderboard();
     });
 
-    // ========== Survey Users ==========
-    async function loadSurveyUsers() {
-        try {
-            const response = await fetch(`${API_BASE}/survey-users`);
-            const data = await response.json();
-            const tbody = document.getElementById('surveyUsersBody');
-            tbody.innerHTML = data.map(user => `
-                <tr id="survey-user-${user.id}">
-                    <td>${user.id}</td>
-                    <td>${user.username}</td>
-                    <td>${user.email || 'N/A'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary" onclick="editSurveyUser(${user.id})">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteSurveyUser(${user.id})">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-            $('#surveyUsersTable').DataTable();
-        } catch (error) {
-            console.error('Error loading survey users:', error);
-        }
-    }
-
-    function editSurveyUser(id) {
-        currentEditTable = 'survey-users';
-        currentEditId = id;
-        const row = document.getElementById(`survey-user-${id}`);
-        const cells = row.getElementsByTagName('td');
-
-        document.getElementById('editModalTitle').textContent = 'Edit Survey User';
-        document.getElementById('editModalBody').innerHTML = `
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input type="text" class="form-control" id="edit-username" value="${cells[1].textContent}">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" id="edit-email" value="${cells[2].textContent === 'N/A' ? '' : cells[2].textContent}">
-            </div>
-        `;
-        new bootstrap.Modal(document.getElementById('editModal')).show();
-    }
-
-    async function deleteSurveyUser(id) {
-        if (!confirm('Are you sure you want to delete this survey user?')) return;
-        try {
-            await fetch(`${API_BASE}/survey-users/${id}`, { method: 'DELETE' });
-            loadSurveyUsers();
-        } catch (error) {
-            alert('Error deleting survey user');
-        }
-    }
-
     // ========== Survey Responses ==========
     async function loadSurveyResponses() {
         try {
-            const response = await fetch(`${API_BASE}/survey-responses`);
+            const response = await fetch(`${API_BASE}/survey-responses-with-users?limit=100`);
             const data = await response.json();
             const tbody = document.getElementById('surveyResponsesBody');
             tbody.innerHTML = data.map(resp => `
                 <tr id="survey-response-${resp.id}">
                     <td>${resp.id}</td>
                     <td>${resp.user_id}</td>
+                    <td>${resp.username || 'N/A'}</td>
                     <td>${resp.uses_ai_schoolwork}</td>
                     <td title="${resp.policy_perspective || ''}">${(resp.policy_perspective || '').substring(0, 50)}...</td>
                     <td>${resp.completed_at || 'N/A'}</td>
@@ -311,21 +239,19 @@
         }
     }
 
-    // ========== AI Tool Preferences ==========
+    // ========== AI Tool Preferences (Grouped by User) ==========
     async function loadAIPreferences() {
         try {
-            const response = await fetch(`${API_BASE}/ai-preferences`);
+            const response = await fetch(`${API_BASE}/ai-preferences-grouped?limit=100`);
             const data = await response.json();
             const tbody = document.getElementById('aiPreferencesBody');
-            tbody.innerHTML = data.map(pref => `
-                <tr id="ai-pref-${pref.id}">
-                    <td>${pref.id}</td>
-                    <td>${pref.response_id}</td>
-                    <td>${pref.subject}</td>
-                    <td>${pref.ai_tool}</td>
+            tbody.innerHTML = data.map(user => `
+                <tr id="ai-pref-user-${user.user_id}">
+                    <td>${user.user_id}</td>
+                    <td>${user.username}</td>
+                    <td>${user.preferences}</td>
                     <td>
-                        <button class="btn btn-sm btn-primary" onclick="editAIPreference(${pref.id})">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteAIPreference(${pref.id})">Delete</button>
+                        <button class="btn btn-sm btn-primary" onclick="editAIPreferences(${user.user_id}, '${user.username}')">Edit</button>
                     </td>
                 </tr>
             `).join('');
@@ -335,44 +261,32 @@
         }
     }
 
-    function editAIPreference(id) {
-        currentEditTable = 'ai-preferences';
-        currentEditId = id;
-        fetch(`${API_BASE}/ai-preferences/${id}`).then(r => r.json()).then(pref => {
-            document.getElementById('editModalTitle').textContent = 'Edit AI Tool Preference';
-            document.getElementById('editModalBody').innerHTML = `
-                <div class="mb-3">
-                    <label class="form-label">Subject</label>
-                    <select class="form-control" id="edit-subject">
-                        <option value="english" ${pref.subject === 'english' ? 'selected' : ''}>English</option>
-                        <option value="math" ${pref.subject === 'math' ? 'selected' : ''}>Math</option>
-                        <option value="science" ${pref.subject === 'science' ? 'selected' : ''}>Science</option>
-                        <option value="cs" ${pref.subject === 'cs' ? 'selected' : ''}>CS</option>
-                        <option value="history" ${pref.subject === 'history' ? 'selected' : ''}>History</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">AI Tool</label>
-                    <select class="form-control" id="edit-ai-tool">
-                        <option value="ChatGPT" ${pref.ai_tool === 'ChatGPT' ? 'selected' : ''}>ChatGPT</option>
-                        <option value="Claude" ${pref.ai_tool === 'Claude' ? 'selected' : ''}>Claude</option>
-                        <option value="Gemini" ${pref.ai_tool === 'Gemini' ? 'selected' : ''}>Gemini</option>
-                        <option value="Copilot" ${pref.ai_tool === 'Copilot' ? 'selected' : ''}>Copilot</option>
-                    </select>
-                </div>
-            `;
+    function editAIPreferences(userId, username) {
+        currentEditTable = 'ai-preferences-grouped';
+        currentEditId = userId;
+        fetch(`${API_BASE}/ai-preferences-by-user/${userId}`).then(r => r.json()).then(prefs => {
+            currentEditData = prefs;
+            const subjects = ['math', 'english', 'science', 'cs', 'history'];
+            const tools = ['ChatGPT', 'Claude', 'Gemini', 'Copilot'];
+
+            let formHtml = `<p><strong>User:</strong> ${username}</p>`;
+            subjects.forEach(subject => {
+                const currentTool = prefs.find(p => p.subject === subject)?.ai_tool || '';
+                formHtml += `
+                    <div class="mb-3">
+                        <label class="form-label">${subject.charAt(0).toUpperCase() + subject.slice(1)}</label>
+                        <select class="form-control" id="edit-pref-${subject}">
+                            <option value="">-- Select --</option>
+                            ${tools.map(tool => `<option value="${tool}" ${currentTool === tool ? 'selected' : ''}>${tool}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+            });
+
+            document.getElementById('editModalTitle').textContent = 'Edit AI Tool Preferences';
+            document.getElementById('editModalBody').innerHTML = formHtml;
             new bootstrap.Modal(document.getElementById('editModal')).show();
         });
-    }
-
-    async function deleteAIPreference(id) {
-        if (!confirm('Are you sure you want to delete this preference?')) return;
-        try {
-            await fetch(`${API_BASE}/ai-preferences/${id}`, { method: 'DELETE' });
-            loadAIPreferences();
-        } catch (error) {
-            alert('Error deleting AI preference');
-        }
     }
 
     // ========== Questions ==========
@@ -443,23 +357,64 @@
     // ========== Leaderboard ==========
     async function loadLeaderboard() {
         try {
-            const response = await fetch('/api/badges/leaderboard');
+            const response = await fetch(`${API_BASE}/leaderboard`);
             const data = await response.json();
             const tbody = document.getElementById('leaderboardBody');
-            if (data.success && data.leaderboard) {
-                tbody.innerHTML = data.leaderboard.map((user, index) => `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${user.uid}</td>
-                        <td>${user.name}</td>
-                        <td>${user.badge_count}</td>
-                        <td>${(user.badges || []).join(', ')}</td>
-                    </tr>
-                `).join('');
-            }
+            tbody.innerHTML = data.map((entry, index) => `
+                <tr id="leaderboard-${entry.id}">
+                    <td>${index + 1}</td>
+                    <td>${entry.id}</td>
+                    <td>${entry.uid}</td>
+                    <td>${entry.playerName}</td>
+                    <td>${entry.score}</td>
+                    <td>${entry.correctAnswers}</td>
+                    <td>${entry.timestamp || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editLeaderboardEntry(${entry.id})">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteLeaderboardEntry(${entry.id})">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
             $('#leaderboardTable').DataTable();
         } catch (error) {
             console.error('Error loading leaderboard:', error);
+        }
+    }
+
+    function editLeaderboardEntry(id) {
+        currentEditTable = 'leaderboard';
+        currentEditId = id;
+        fetch(`${API_BASE}/leaderboard/${id}`).then(r => r.json()).then(entry => {
+            document.getElementById('editModalTitle').textContent = 'Edit Leaderboard Entry';
+            document.getElementById('editModalBody').innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">UID</label>
+                    <input type="text" class="form-control" id="edit-lb-uid" value="${entry.uid}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Player Name</label>
+                    <input type="text" class="form-control" id="edit-lb-name" value="${entry.playerName}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Score</label>
+                    <input type="number" class="form-control" id="edit-lb-score" value="${entry.score}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Correct Answers</label>
+                    <input type="number" class="form-control" id="edit-lb-correct" value="${entry.correctAnswers}">
+                </div>
+            `;
+            new bootstrap.Modal(document.getElementById('editModal')).show();
+        });
+    }
+
+    async function deleteLeaderboardEntry(id) {
+        if (!confirm('Are you sure you want to delete this leaderboard entry?')) return;
+        try {
+            await fetch(`${API_BASE}/leaderboard/${id}`, { method: 'DELETE' });
+            loadLeaderboard();
+        } catch (error) {
+            alert('Error deleting leaderboard entry');
         }
     }
 
@@ -467,15 +422,9 @@
     document.getElementById('saveEditBtn').addEventListener('click', async function() {
         let endpoint = '';
         let body = {};
+        let method = 'PUT';
 
         switch(currentEditTable) {
-            case 'survey-users':
-                endpoint = `${API_BASE}/survey-users/${currentEditId}`;
-                body = {
-                    username: document.getElementById('edit-username').value,
-                    email: document.getElementById('edit-email').value
-                };
-                break;
             case 'survey-responses':
                 endpoint = `${API_BASE}/survey-responses/${currentEditId}`;
                 body = {
@@ -484,11 +433,14 @@
                     badge_awarded: document.getElementById('edit-badge').value === 'true'
                 };
                 break;
-            case 'ai-preferences':
-                endpoint = `${API_BASE}/ai-preferences/${currentEditId}`;
+            case 'ai-preferences-grouped':
+                endpoint = `${API_BASE}/ai-preferences-by-user/${currentEditId}`;
                 body = {
-                    subject: document.getElementById('edit-subject').value,
-                    ai_tool: document.getElementById('edit-ai-tool').value
+                    math: document.getElementById('edit-pref-math').value,
+                    english: document.getElementById('edit-pref-english').value,
+                    science: document.getElementById('edit-pref-science').value,
+                    cs: document.getElementById('edit-pref-cs').value,
+                    history: document.getElementById('edit-pref-history').value
                 };
                 break;
             case 'questions':
@@ -500,11 +452,20 @@
                     answer: document.getElementById('edit-q-answer').value
                 };
                 break;
+            case 'leaderboard':
+                endpoint = `${API_BASE}/leaderboard/${currentEditId}`;
+                body = {
+                    uid: document.getElementById('edit-lb-uid').value,
+                    playerName: document.getElementById('edit-lb-name').value,
+                    score: parseInt(document.getElementById('edit-lb-score').value),
+                    correctAnswers: parseInt(document.getElementById('edit-lb-correct').value)
+                };
+                break;
         }
 
         try {
             const response = await fetch(endpoint, {
-                method: 'PUT',
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
@@ -513,10 +474,10 @@
                 bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
                 // Reload the appropriate table
                 switch(currentEditTable) {
-                    case 'survey-users': loadSurveyUsers(); break;
                     case 'survey-responses': loadSurveyResponses(); break;
-                    case 'ai-preferences': loadAIPreferences(); break;
+                    case 'ai-preferences-grouped': loadAIPreferences(); break;
                     case 'questions': loadQuestions(); break;
+                    case 'leaderboard': loadLeaderboard(); break;
                 }
             } else {
                 alert('Error saving changes');

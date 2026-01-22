@@ -4,68 +4,6 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
 
-class SurveyUser(db.Model):
-    """
-    SurveyUser Model
-
-    Represents users who have taken the AI survey.
-
-    Attributes:
-        id (Column): Primary key, unique identifier for the user.
-        _username (Column): The user's username.
-        _email (Column): The user's email address.
-    """
-    __tablename__ = 'survey_users'
-
-    id = db.Column(db.Integer, primary_key=True)
-    _username = db.Column(db.String(255), unique=True, nullable=False)
-    _email = db.Column(db.String(255), unique=False, nullable=True)
-
-    # One-to-many relationship with SurveyResponse
-    responses = db.relationship('SurveyResponse', backref='user', lazy=True, cascade='all, delete-orphan')
-
-    def __init__(self, username, email=None):
-        self._username = username
-        self._email = email
-
-    @property
-    def username(self):
-        return self._username
-
-    @username.setter
-    def username(self, username):
-        self._username = username
-
-    @property
-    def email(self):
-        return self._email
-
-    @email.setter
-    def email(self, email):
-        self._email = email
-
-    def create(self):
-        try:
-            db.session.add(self)
-            db.session.commit()
-            return self
-        except IntegrityError:
-            db.session.rollback()
-            return None
-
-    def read(self):
-        return {
-            "id": self.id,
-            "username": self._username,
-            "email": self._email
-        }
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
-        return None
-
-
 class SurveyResponse(db.Model):
     """
     SurveyResponse Model
@@ -74,16 +12,19 @@ class SurveyResponse(db.Model):
 
     Attributes:
         id (Column): Primary key, unique identifier for the response.
-        user_id (Column): Foreign key referencing the survey_users table.
+        user_id (Column): User identifier (sequential).
+        _username (Column): The user's username.
         _uses_ai_schoolwork (Column): Whether the user uses AI for schoolwork (Yes/No).
         _policy_perspective (Column): User's perspective on AI policy (FRQ text).
         _completed_at (Column): Timestamp when the survey was completed.
         _badge_awarded (Column): Whether a badge was awarded for this response.
     """
     __tablename__ = 'survey_responses'
+    __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('survey_users.id'), nullable=False)
+    user_id = db.Column(db.Integer, nullable=False)
+    _username = db.Column(db.String(255), nullable=False)
     _uses_ai_schoolwork = db.Column(db.String(10), nullable=False)
     _policy_perspective = db.Column(db.Text, nullable=True)
     _completed_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -92,11 +33,20 @@ class SurveyResponse(db.Model):
     # One-to-many relationship with AIToolPreference
     preferences = db.relationship('AIToolPreference', backref='response', lazy=True, cascade='all, delete-orphan')
 
-    def __init__(self, user_id, uses_ai_schoolwork, policy_perspective=None, badge_awarded=False):
+    def __init__(self, user_id, username, uses_ai_schoolwork, policy_perspective=None, badge_awarded=False):
         self.user_id = user_id
+        self._username = username
         self._uses_ai_schoolwork = uses_ai_schoolwork
         self._policy_perspective = policy_perspective
         self._badge_awarded = badge_awarded
+
+    @property
+    def username(self):
+        return self._username
+
+    @username.setter
+    def username(self, value):
+        self._username = value
 
     @property
     def uses_ai_schoolwork(self):
@@ -139,6 +89,7 @@ class SurveyResponse(db.Model):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            "username": self._username,
             "uses_ai_schoolwork": self._uses_ai_schoolwork,
             "policy_perspective": self._policy_perspective,
             "completed_at": self._completed_at.isoformat() if self._completed_at else None,
@@ -165,6 +116,7 @@ class AIToolPreference(db.Model):
         _ai_tool (Column): The preferred AI tool (ChatGPT, Claude, Gemini, Copilot).
     """
     __tablename__ = 'ai_tool_preferences'
+    __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
     response_id = db.Column(db.Integer, db.ForeignKey('survey_responses.id'), nullable=False)
@@ -260,20 +212,12 @@ def initSurveyResults():
             "The key is transparency - students should disclose when and how they use AI in their work.",
         ]
 
-        # Create 100 users and responses
+        # Create 100 survey responses directly (no separate SurveyUser table)
         for i in range(1, 101):
             username = f"student_{i:03d}"
-            email = f"student{i}@school.edu"
 
-            # Check if user exists, create if not
-            survey_user = SurveyUser.query.filter_by(_username=username).first()
-            if not survey_user:
-                survey_user = SurveyUser(username=username, email=email)
-                db.session.add(survey_user)
-                db.session.commit()
-
-            # Check if user already has a response
-            existing_response = SurveyResponse.query.filter_by(user_id=survey_user.id).first()
+            # Check if response already exists for this user_id
+            existing_response = SurveyResponse.query.filter_by(user_id=i).first()
             if existing_response:
                 continue
 
@@ -283,9 +227,10 @@ def initSurveyResults():
             # Random FRQ response
             frq = random.choice(frq_responses)
 
-            # Create survey response
+            # Create survey response with username directly
             response = SurveyResponse(
-                user_id=survey_user.id,
+                user_id=i,
+                username=username,
                 uses_ai_schoolwork=uses_ai,
                 policy_perspective=frq,
                 badge_awarded=True

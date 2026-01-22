@@ -12,9 +12,12 @@ try:
     from model.post import Post
     from model.study import Study
     
-    # Import survey models - all three classes explicitly
-    from model.survey_results import SurveyUser, SurveyResponse, AIToolPreference, initSurveyResults
-    
+    # Import survey models
+    from model.survey_results import SurveyResponse, AIToolPreference, initSurveyResults
+
+    # Import leaderboard model
+    from model.leaderboard import LeaderboardEntry, initLeaderboard
+
     # Import entire modules to get all their models
     import model.classroom
     
@@ -151,7 +154,23 @@ def migrate():
                     print(f"✓ Survey table already has {survey_count} records")
             else:
                 print("⚠️  survey_responses table doesn't exist, skipping seed data")
-                
+
+            # Initialize leaderboard ONLY if table exists
+            if 'leaderboard' in tables:
+                leaderboard_count = LeaderboardEntry.query.count()
+                if leaderboard_count == 0:
+                    print("🌱 Leaderboard table is empty, initializing seed data...")
+                    try:
+                        initLeaderboard()
+                        new_count = LeaderboardEntry.query.count()
+                        print(f"✅ Initialized {new_count} leaderboard entries")
+                    except Exception as e:
+                        print(f"⚠️  Error initializing leaderboard: {e}")
+                else:
+                    print(f"✓ Leaderboard table already has {leaderboard_count} records")
+            else:
+                print("⚠️  leaderboard table doesn't exist, skipping seed data")
+
     except Exception as e:
         print(f"⚠️  Seed data initialization error: {e}")
         import traceback

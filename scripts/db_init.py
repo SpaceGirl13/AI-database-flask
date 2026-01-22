@@ -31,6 +31,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Import application object
 from main import app, db, initUsers
 from model.microblog import init_microblogs
+from model.questions import initQuestions
+from model.survey_results import initSurveyResults
+from model.leaderboard import initLeaderboard
 
 # Backup the old database
 def backup_database(db_uri, backup_uri):
@@ -83,9 +86,12 @@ def main():
             db.create_all()
             print("All tables created.")
             
-            # Add default test data 
+            # Add default test data
             initUsers() # test data
             init_microblogs() # microblog test data
+            initQuestions() # math and science questions
+            initSurveyResults() # 100 survey responses with AI tool preferences
+            initLeaderboard() # leaderboard entries for submodule 3
             
     except Exception as e:
         print(f"An error occurred: {e}")

@@ -5,13 +5,14 @@ import os
 from datetime import datetime
 from api.jwt_authorize import token_required
 from model.user import User
+from model.leaderboard import LeaderboardEntry
+from __init__ import db
 
 # Create Blueprint
 game_api = Blueprint('game_api', __name__)
 
 # Data files
 QUESTIONS_FILE = 'game_questions.json'
-SCORES_FILE = 'game_scores.json'
 
 # Badge definitions (matching badge.py)
 BADGE_DEFINITIONS = {
@@ -189,18 +190,6 @@ def save_questions(data):
     with open(QUESTIONS_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
-def load_scores():
-    """Load scores from database file"""
-    if os.path.exists(SCORES_FILE):
-        with open(SCORES_FILE, 'r') as f:
-            return json.load(f)
-    return {'scores': []}
-
-def save_scores(data):
-    """Save scores to database file"""
-    with open(SCORES_FILE, 'w') as f:
-        json.dump(data, f, indent=2)
-
 @game_api.route('/questions', methods=['GET'])
 def get_questions():
     """Get all questions for the game"""
@@ -216,7 +205,7 @@ def get_questions():
 @game_api.route('/scores', methods=['POST'])
 @token_required()
 def save_score():
-    """Save a player's score"""
+    """Save a player's score to the database"""
     try:
         current_user = g.current_user
         score_data = request.json
@@ -227,23 +216,19 @@ def save_score():
             if field not in score_data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
-        # Add user info
-        score_data['playerName'] = current_user.name
-        score_data['uid'] = current_user.uid
-
-        # Load existing scores
-        data = load_scores()
-
-        # Add new score
-        data['scores'].append(score_data)
-
-        # Save back to file
-        save_scores(data)
+        # Create new leaderboard entry
+        entry = LeaderboardEntry(
+            uid=current_user.uid,
+            player_name=current_user.name,
+            score=score_data['score'],
+            correct_answers=score_data['correctAnswers']
+        )
+        entry.create()
 
         # Check if user made leaderboard (top 10)
-        sorted_scores = sorted(data['scores'], key=lambda x: (-x['score'], x['timestamp']))
-        top_10_uids = [s.get('uid') for s in sorted_scores[:10]]
-        
+        top_entries = LeaderboardEntry.get_top_scores(10)
+        top_10_uids = [e.uid for e in top_entries]
+
         was_newly_awarded = False
         badge_info = None
         if current_user.uid in top_10_uids:
@@ -257,7 +242,7 @@ def save_score():
             'message': 'Score saved successfully',
             'badge_awarded': was_newly_awarded
         }
-        
+
         if badge_info:
             response_data['badge'] = badge_info
 
@@ -268,18 +253,10 @@ def save_score():
 
 @game_api.route('/leaderboard', methods=['GET'])
 def get_leaderboard():
-    """Get top 10 scores"""
+    """Get top 10 scores from database"""
     try:
-        data = load_scores()
-
-        # Sort scores by score (descending), then by timestamp (ascending for ties)
-        sorted_scores = sorted(
-            data['scores'],
-            key=lambda x: (-x['score'], x['timestamp'])
-        )
-
-        # Return top 10
-        leaderboard = sorted_scores[:10]
+        top_entries = LeaderboardEntry.get_top_scores(10)
+        leaderboard = [entry.read() for entry in top_entries]
 
         return jsonify({
             'success': True,
@@ -297,19 +274,19 @@ def complete_submodule():
         current_user = g.current_user
         badge_id = 'prodigy_problem_solver'
         was_newly_awarded = current_user.add_badge(badge_id)
-        
+
         response_data = {
             'success': True,
             'message': 'Submodule 3 completed!',
             'badge_awarded': was_newly_awarded
         }
-        
+
         if was_newly_awarded:
             badge_info = get_badge_info(badge_id)
             if badge_info:
                 response_data['badge'] = badge_info
-        
+
         return jsonify(response_data), 200
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500

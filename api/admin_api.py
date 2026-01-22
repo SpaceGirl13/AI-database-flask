@@ -1,52 +1,19 @@
 """Admin API for managing database tables"""
 from flask import Blueprint, jsonify, request
 from __init__ import db
-from model.survey_results import SurveyUser, SurveyResponse, AIToolPreference
+from model.survey_results import SurveyResponse, AIToolPreference
 from model.questions import Question
+from model.leaderboard import LeaderboardEntry
 
 admin_api = Blueprint('admin_api', __name__, url_prefix='/api/admin')
 
-# ========== Survey Users ==========
+# ========== Survey Responses (with Username included) ==========
 
-@admin_api.route('/survey-users', methods=['GET'])
-def get_survey_users():
-    """Get all survey users"""
-    users = SurveyUser.query.all()
-    return jsonify([user.read() for user in users])
-
-@admin_api.route('/survey-users/<int:id>', methods=['GET'])
-def get_survey_user(id):
-    """Get a single survey user"""
-    user = SurveyUser.query.get_or_404(id)
-    return jsonify(user.read())
-
-@admin_api.route('/survey-users/<int:id>', methods=['PUT'])
-def update_survey_user(id):
-    """Update a survey user"""
-    user = SurveyUser.query.get_or_404(id)
-    data = request.get_json()
-
-    if 'username' in data:
-        user.username = data['username']
-    if 'email' in data:
-        user.email = data['email']
-
-    db.session.commit()
-    return jsonify(user.read())
-
-@admin_api.route('/survey-users/<int:id>', methods=['DELETE'])
-def delete_survey_user(id):
-    """Delete a survey user"""
-    user = SurveyUser.query.get_or_404(id)
-    user.delete()
-    return jsonify({'message': 'Survey user deleted'})
-
-# ========== Survey Responses ==========
-
-@admin_api.route('/survey-responses', methods=['GET'])
-def get_survey_responses():
-    """Get all survey responses"""
-    responses = SurveyResponse.query.all()
+@admin_api.route('/survey-responses-with-users', methods=['GET'])
+def get_survey_responses_with_users():
+    """Get survey responses (username is now in the table), limited to 100 rows"""
+    limit = request.args.get('limit', 100, type=int)
+    responses = SurveyResponse.query.limit(limit).all()
     return jsonify([resp.read() for resp in responses])
 
 @admin_api.route('/survey-responses/<int:id>', methods=['GET'])
@@ -61,6 +28,8 @@ def update_survey_response(id):
     response = SurveyResponse.query.get_or_404(id)
     data = request.get_json()
 
+    if 'username' in data:
+        response.username = data['username']
     if 'uses_ai_schoolwork' in data:
         response.uses_ai_schoolwork = data['uses_ai_schoolwork']
     if 'policy_perspective' in data:
@@ -78,40 +47,82 @@ def delete_survey_response(id):
     response.delete()
     return jsonify({'message': 'Survey response deleted'})
 
-# ========== AI Tool Preferences ==========
+# ========== AI Tool Preferences (Grouped by User) ==========
 
-@admin_api.route('/ai-preferences', methods=['GET'])
-def get_ai_preferences():
-    """Get all AI tool preferences"""
-    prefs = AIToolPreference.query.all()
+@admin_api.route('/ai-preferences-grouped', methods=['GET'])
+def get_ai_preferences_grouped():
+    """Get AI preferences grouped by user, showing all subjects in one row"""
+    limit = request.args.get('limit', 100, type=int)
+
+    # Get responses (limited)
+    responses = SurveyResponse.query.limit(limit).all()
+
+    result = []
+    for resp in responses:
+        # Get all preferences for this response
+        prefs = AIToolPreference.query.filter_by(response_id=resp.id).all()
+
+        # Format preferences as "Math - ChatGPT, English - Claude, etc."
+        pref_strings = []
+        for pref in prefs:
+            subject = pref.subject.capitalize()
+            pref_strings.append(f"{subject} - {pref.ai_tool}")
+
+        preferences_str = ', '.join(pref_strings) if pref_strings else 'No preferences'
+
+        result.append({
+            'user_id': resp.user_id,
+            'response_id': resp.id,
+            'username': resp.username,
+            'preferences': preferences_str
+        })
+
+    return jsonify(result)
+
+@admin_api.route('/ai-preferences-by-user/<int:user_id>', methods=['GET'])
+def get_ai_preferences_by_user(user_id):
+    """Get all AI preferences for a specific user"""
+    # Find the response for this user
+    response = SurveyResponse.query.filter_by(user_id=user_id).first()
+    if not response:
+        return jsonify([])
+
+    prefs = AIToolPreference.query.filter_by(response_id=response.id).all()
     return jsonify([pref.read() for pref in prefs])
 
-@admin_api.route('/ai-preferences/<int:id>', methods=['GET'])
-def get_ai_preference(id):
-    """Get a single AI tool preference"""
-    pref = AIToolPreference.query.get_or_404(id)
-    return jsonify(pref.read())
-
-@admin_api.route('/ai-preferences/<int:id>', methods=['PUT'])
-def update_ai_preference(id):
-    """Update an AI tool preference"""
-    pref = AIToolPreference.query.get_or_404(id)
+@admin_api.route('/ai-preferences-by-user/<int:user_id>', methods=['PUT'])
+def update_ai_preferences_by_user(user_id):
+    """Update AI preferences for a specific user"""
     data = request.get_json()
 
-    if 'subject' in data:
-        pref.subject = data['subject']
-    if 'ai_tool' in data:
-        pref.ai_tool = data['ai_tool']
+    # Find the response for this user
+    response = SurveyResponse.query.filter_by(user_id=user_id).first()
+    if not response:
+        return jsonify({'error': 'User response not found'}), 404
+
+    # Update each subject preference
+    subjects = ['math', 'english', 'science', 'cs', 'history']
+    for subject in subjects:
+        if subject in data and data[subject]:
+            # Find existing preference or create new one
+            pref = AIToolPreference.query.filter_by(
+                response_id=response.id,
+                _subject=subject
+            ).first()
+
+            if pref:
+                pref.ai_tool = data[subject]
+            else:
+                # Create new preference
+                new_pref = AIToolPreference(
+                    response_id=response.id,
+                    subject=subject,
+                    ai_tool=data[subject]
+                )
+                db.session.add(new_pref)
 
     db.session.commit()
-    return jsonify(pref.read())
-
-@admin_api.route('/ai-preferences/<int:id>', methods=['DELETE'])
-def delete_ai_preference(id):
-    """Delete an AI tool preference"""
-    pref = AIToolPreference.query.get_or_404(id)
-    pref.delete()
-    return jsonify({'message': 'AI preference deleted'})
+    return jsonify({'message': 'Preferences updated'})
 
 # ========== Questions ==========
 
@@ -154,3 +165,42 @@ def delete_question(id):
     db.session.delete(question)
     db.session.commit()
     return jsonify({'message': 'Question deleted'})
+
+# ========== Leaderboard ==========
+
+@admin_api.route('/leaderboard', methods=['GET'])
+def get_leaderboard():
+    """Get all leaderboard entries"""
+    entries = LeaderboardEntry.get_all_scores()
+    return jsonify([entry.read() for entry in entries])
+
+@admin_api.route('/leaderboard/<int:id>', methods=['GET'])
+def get_leaderboard_entry(id):
+    """Get a single leaderboard entry"""
+    entry = LeaderboardEntry.query.get_or_404(id)
+    return jsonify(entry.read())
+
+@admin_api.route('/leaderboard/<int:id>', methods=['PUT'])
+def update_leaderboard_entry(id):
+    """Update a leaderboard entry"""
+    entry = LeaderboardEntry.query.get_or_404(id)
+    data = request.get_json()
+
+    if 'uid' in data:
+        entry.uid = data['uid']
+    if 'playerName' in data:
+        entry.player_name = data['playerName']
+    if 'score' in data:
+        entry.score = data['score']
+    if 'correctAnswers' in data:
+        entry.correct_answers = data['correctAnswers']
+
+    db.session.commit()
+    return jsonify(entry.read())
+
+@admin_api.route('/leaderboard/<int:id>', methods=['DELETE'])
+def delete_leaderboard_entry(id):
+    """Delete a leaderboard entry"""
+    entry = LeaderboardEntry.query.get_or_404(id)
+    entry.delete()
+    return jsonify({'message': 'Leaderboard entry deleted'})
