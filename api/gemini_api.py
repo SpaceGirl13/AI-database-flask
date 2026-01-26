@@ -131,15 +131,18 @@ class GeminiAPI:
             # Build the endpoint URL
             endpoint = f"{server}?key={api_key}"
             
-            # Default prompt for citation analysis, can be overridden
-            default_prompt = f"Please look at this text for correct academic citations, and recommend APA references for each area of concern"
-            prompt = body.get('prompt', default_prompt)
-            
+            # Custom prompt can be provided to prepend instructions
+            # If empty, just use the text directly
+            prompt = body.get('prompt') or ''
+
+            # Build the final text: if prompt provided, prepend it with colon separator
+            final_text = f"{prompt}: {text}" if prompt else text
+
             # Prepare the request payload for Gemini API
             payload = {
                 "contents": [{
                     "parts": [{
-                        "text": f"{prompt}: {text}"
+                        "text": final_text
                     }]
                 }]
             }
