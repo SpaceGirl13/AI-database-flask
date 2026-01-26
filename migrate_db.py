@@ -112,16 +112,13 @@ def migrate():
     except Exception as e:
         print(f"⚠️  Column migration error: {e}")
     
-    # STEP 3: Initialize seed data (ONLY if tables exist)
+    # STEP 3: Initialize seed data
     print("\n📋 Step 3: Initializing seed data...")
     try:
         with app.app_context():
-            from sqlalchemy import inspect
-            inspector = inspect(db.engine)
-            tables = inspector.get_table_names()
-            
-            # Initialize questions ONLY if table exists
-            if 'questions' in tables:
+            # Initialize questions
+            print("🔍 Checking questions table...")
+            try:
                 question_count = Question.query.count()
                 if question_count == 0:
                     print("🌱 Questions table is empty, attempting to initialize seed data...")
@@ -134,13 +131,16 @@ def migrate():
                             print("⚠️  initQuestions() ran but no questions were added (JSON files missing?)")
                     except Exception as e:
                         print(f"⚠️  Error initializing questions: {e}")
+                        import traceback
+                        traceback.print_exc()
                 else:
                     print(f"✓ Questions table already has {question_count} records")
-            else:
-                print("⚠️  questions table doesn't exist, skipping seed data")
-            
-            # Initialize survey ONLY if table exists
-            if 'survey_responses' in tables:
+            except Exception as e:
+                print(f"⚠️  Error checking questions table: {e}")
+
+            # Initialize survey responses
+            print("🔍 Checking survey_responses table...")
+            try:
                 survey_count = SurveyResponse.query.count()
                 if survey_count == 0:
                     print("🌱 Survey table is empty, initializing seed data...")
@@ -150,13 +150,16 @@ def migrate():
                         print(f"✅ Initialized {new_count} survey responses")
                     except Exception as e:
                         print(f"⚠️  Error initializing survey: {e}")
+                        import traceback
+                        traceback.print_exc()
                 else:
                     print(f"✓ Survey table already has {survey_count} records")
-            else:
-                print("⚠️  survey_responses table doesn't exist, skipping seed data")
+            except Exception as e:
+                print(f"⚠️  Error checking survey table: {e}")
 
-            # Initialize leaderboard ONLY if table exists
-            if 'leaderboard' in tables:
+            # Initialize leaderboard
+            print("🔍 Checking leaderboard table...")
+            try:
                 leaderboard_count = LeaderboardEntry.query.count()
                 if leaderboard_count == 0:
                     print("🌱 Leaderboard table is empty, initializing seed data...")
@@ -166,10 +169,12 @@ def migrate():
                         print(f"✅ Initialized {new_count} leaderboard entries")
                     except Exception as e:
                         print(f"⚠️  Error initializing leaderboard: {e}")
+                        import traceback
+                        traceback.print_exc()
                 else:
                     print(f"✓ Leaderboard table already has {leaderboard_count} records")
-            else:
-                print("⚠️  leaderboard table doesn't exist, skipping seed data")
+            except Exception as e:
+                print(f"⚠️  Error checking leaderboard table: {e}")
 
     except Exception as e:
         print(f"⚠️  Seed data initialization error: {e}")
