@@ -48,6 +48,57 @@ def seed_data():
 
     return jsonify(results)
 
+
+@admin_api.route('/reset-tables', methods=['POST'])
+def reset_tables():
+    """Drop and recreate survey_responses, ai_tool_preferences, and leaderboard tables, then seed them"""
+    results = {
+        'dropped': [],
+        'created': [],
+        'seeded': {},
+        'errors': []
+    }
+
+    try:
+        # Drop the tables in correct order (ai_tool_preferences first due to foreign key)
+        AIToolPreference.__table__.drop(db.engine, checkfirst=True)
+        results['dropped'].append('ai_tool_preferences')
+
+        SurveyResponse.__table__.drop(db.engine, checkfirst=True)
+        results['dropped'].append('survey_responses')
+
+        LeaderboardEntry.__table__.drop(db.engine, checkfirst=True)
+        results['dropped'].append('leaderboard')
+
+        # Recreate the tables
+        SurveyResponse.__table__.create(db.engine, checkfirst=True)
+        results['created'].append('survey_responses')
+
+        AIToolPreference.__table__.create(db.engine, checkfirst=True)
+        results['created'].append('ai_tool_preferences')
+
+        LeaderboardEntry.__table__.create(db.engine, checkfirst=True)
+        results['created'].append('leaderboard')
+
+        # Seed the data
+        try:
+            initSurveyResults()
+            results['seeded']['survey_responses'] = SurveyResponse.query.count()
+            results['seeded']['ai_tool_preferences'] = AIToolPreference.query.count()
+        except Exception as e:
+            results['errors'].append(f"Survey seeding error: {str(e)}")
+
+        try:
+            initLeaderboard()
+            results['seeded']['leaderboard'] = LeaderboardEntry.query.count()
+        except Exception as e:
+            results['errors'].append(f"Leaderboard seeding error: {str(e)}")
+
+    except Exception as e:
+        results['errors'].append(str(e))
+
+    return jsonify(results)
+
 # ========== Survey Responses (with Username included) ==========
 
 @admin_api.route('/survey-responses-with-users', methods=['GET'])
