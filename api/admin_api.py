@@ -4,6 +4,7 @@ from __init__ import db
 from model.survey_results import SurveyResponse, AIToolPreference, initSurveyResults
 from model.questions import Question, initQuestions
 from model.leaderboard import LeaderboardEntry, initLeaderboard
+from model.submodule_feedback import SubmoduleFeedback, initSubmoduleFeedback
 
 admin_api = Blueprint('admin_api', __name__, url_prefix='/api/admin')
 
@@ -16,7 +17,8 @@ def seed_data():
     results = {
         'survey': {'before': 0, 'after': 0, 'error': None},
         'leaderboard': {'before': 0, 'after': 0, 'error': None},
-        'questions': {'before': 0, 'after': 0, 'error': None}
+        'questions': {'before': 0, 'after': 0, 'error': None},
+        'submodule_feedback': {'before': 0, 'after': 0, 'error': None}
     }
 
     # Seed survey responses
@@ -46,12 +48,21 @@ def seed_data():
     except Exception as e:
         results['questions']['error'] = str(e)
 
+    # Seed submodule feedback
+    try:
+        results['submodule_feedback']['before'] = SubmoduleFeedback.query.count()
+        if results['submodule_feedback']['before'] == 0:
+            initSubmoduleFeedback()
+        results['submodule_feedback']['after'] = SubmoduleFeedback.query.count()
+    except Exception as e:
+        results['submodule_feedback']['error'] = str(e)
+
     return jsonify(results)
 
 
 @admin_api.route('/reset-tables', methods=['POST'])
 def reset_tables():
-    """Drop and recreate survey_responses, ai_tool_preferences, and leaderboard tables, then seed them"""
+    """Drop and recreate survey_responses, ai_tool_preferences, leaderboard, and submodule_feedback tables, then seed them"""
     results = {
         'dropped': [],
         'created': [],
@@ -70,6 +81,9 @@ def reset_tables():
         LeaderboardEntry.__table__.drop(db.engine, checkfirst=True)
         results['dropped'].append('leaderboard')
 
+        SubmoduleFeedback.__table__.drop(db.engine, checkfirst=True)
+        results['dropped'].append('submodule_feedback')
+
         # Recreate the tables
         SurveyResponse.__table__.create(db.engine, checkfirst=True)
         results['created'].append('survey_responses')
@@ -79,6 +93,9 @@ def reset_tables():
 
         LeaderboardEntry.__table__.create(db.engine, checkfirst=True)
         results['created'].append('leaderboard')
+
+        SubmoduleFeedback.__table__.create(db.engine, checkfirst=True)
+        results['created'].append('submodule_feedback')
 
         # Seed the data
         try:
@@ -93,6 +110,12 @@ def reset_tables():
             results['seeded']['leaderboard'] = LeaderboardEntry.query.count()
         except Exception as e:
             results['errors'].append(f"Leaderboard seeding error: {str(e)}")
+
+        try:
+            initSubmoduleFeedback()
+            results['seeded']['submodule_feedback'] = SubmoduleFeedback.query.count()
+        except Exception as e:
+            results['errors'].append(f"Submodule feedback seeding error: {str(e)}")
 
     except Exception as e:
         results['errors'].append(str(e))
@@ -296,3 +319,58 @@ def delete_leaderboard_entry(id):
     entry = LeaderboardEntry.query.get_or_404(id)
     entry.delete()
     return jsonify({'message': 'Leaderboard entry deleted'})
+
+# ========== Submodule Feedback ==========
+
+@admin_api.route('/submodule-feedback', methods=['GET'])
+def get_all_submodule_feedback():
+    """Get all submodule feedback entries"""
+    category = request.args.get('category')
+    if category:
+        entries = SubmoduleFeedback.get_by_category(category)
+    else:
+        entries = SubmoduleFeedback.get_all_feedback()
+    return jsonify([entry.read() for entry in entries])
+
+@admin_api.route('/submodule-feedback/stats', methods=['GET'])
+def get_submodule_feedback_stats():
+    """Get feedback statistics"""
+    return jsonify({
+        'total_count': SubmoduleFeedback.query.count(),
+        'submodule2_count': len(SubmoduleFeedback.get_by_category('submodule2')),
+        'submodule3_count': len(SubmoduleFeedback.get_by_category('submodule3')),
+        'average_rating': SubmoduleFeedback.get_average_rating(),
+        'submodule2_avg_rating': SubmoduleFeedback.get_average_rating('submodule2'),
+        'submodule3_avg_rating': SubmoduleFeedback.get_average_rating('submodule3')
+    })
+
+@admin_api.route('/submodule-feedback/<int:id>', methods=['GET'])
+def get_submodule_feedback(id):
+    """Get a single feedback entry"""
+    entry = SubmoduleFeedback.query.get_or_404(id)
+    return jsonify(entry.read())
+
+@admin_api.route('/submodule-feedback/<int:id>', methods=['PUT'])
+def update_submodule_feedback(id):
+    """Update a feedback entry"""
+    entry = SubmoduleFeedback.query.get_or_404(id)
+    data = request.get_json()
+
+    if 'username' in data:
+        entry.username = data['username']
+    if 'rating' in data:
+        entry.rating = data['rating']
+    if 'category' in data:
+        entry.category = data['category']
+    if 'comments' in data:
+        entry.comments = data['comments']
+
+    db.session.commit()
+    return jsonify(entry.read())
+
+@admin_api.route('/submodule-feedback/<int:id>', methods=['DELETE'])
+def delete_submodule_feedback(id):
+    """Delete a feedback entry"""
+    entry = SubmoduleFeedback.query.get_or_404(id)
+    entry.delete()
+    return jsonify({'message': 'Feedback entry deleted'})

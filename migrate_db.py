@@ -18,6 +18,9 @@ try:
     # Import leaderboard model
     from model.leaderboard import LeaderboardEntry, initLeaderboard
 
+    # Import submodule feedback model
+    from model.submodule_feedback import SubmoduleFeedback, initSubmoduleFeedback
+
     # Import entire modules to get all their models
     import model.classroom
     
@@ -175,6 +178,25 @@ def migrate():
                     print(f"✓ Leaderboard table already has {leaderboard_count} records")
             except Exception as e:
                 print(f"⚠️  Error checking leaderboard table: {e}")
+
+            # Initialize submodule feedback
+            print("🔍 Checking submodule_feedback table...")
+            try:
+                feedback_count = SubmoduleFeedback.query.count()
+                if feedback_count == 0:
+                    print("🌱 Submodule feedback table is empty, initializing seed data...")
+                    try:
+                        initSubmoduleFeedback()
+                        new_count = SubmoduleFeedback.query.count()
+                        print(f"✅ Initialized {new_count} submodule feedback entries")
+                    except Exception as e:
+                        print(f"⚠️  Error initializing submodule feedback: {e}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"✓ Submodule feedback table already has {feedback_count} records")
+            except Exception as e:
+                print(f"⚠️  Error checking submodule feedback table: {e}")
 
     except Exception as e:
         print(f"⚠️  Seed data initialization error: {e}")
