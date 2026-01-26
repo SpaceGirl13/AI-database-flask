@@ -5,6 +5,7 @@ from model.survey_results import SurveyResponse, AIToolPreference, initSurveyRes
 from model.questions import Question, initQuestions
 from model.leaderboard import LeaderboardEntry, initLeaderboard
 from model.submodule_feedback import SubmoduleFeedback, initSubmoduleFeedback
+from model.feedback import Feedback, initFeedback
 
 admin_api = Blueprint('admin_api', __name__, url_prefix='/api/admin')
 
@@ -57,6 +58,16 @@ def seed_data():
     except Exception as e:
         results['submodule_feedback']['error'] = str(e)
 
+    # Seed general feedbacks
+    results['feedbacks'] = {'before': 0, 'after': 0, 'error': None}
+    try:
+        results['feedbacks']['before'] = Feedback.query.count()
+        if results['feedbacks']['before'] == 0:
+            initFeedback()
+        results['feedbacks']['after'] = Feedback.query.count()
+    except Exception as e:
+        results['feedbacks']['error'] = str(e)
+
     return jsonify(results)
 
 
@@ -84,6 +95,9 @@ def reset_tables():
         SubmoduleFeedback.__table__.drop(db.engine, checkfirst=True)
         results['dropped'].append('submodule_feedback')
 
+        Feedback.__table__.drop(db.engine, checkfirst=True)
+        results['dropped'].append('feedbacks')
+
         # Recreate the tables
         SurveyResponse.__table__.create(db.engine, checkfirst=True)
         results['created'].append('survey_responses')
@@ -96,6 +110,9 @@ def reset_tables():
 
         SubmoduleFeedback.__table__.create(db.engine, checkfirst=True)
         results['created'].append('submodule_feedback')
+
+        Feedback.__table__.create(db.engine, checkfirst=True)
+        results['created'].append('feedbacks')
 
         # Seed the data
         try:
@@ -116,6 +133,12 @@ def reset_tables():
             results['seeded']['submodule_feedback'] = SubmoduleFeedback.query.count()
         except Exception as e:
             results['errors'].append(f"Submodule feedback seeding error: {str(e)}")
+
+        try:
+            initFeedback()
+            results['seeded']['feedbacks'] = Feedback.query.count()
+        except Exception as e:
+            results['errors'].append(f"Feedbacks seeding error: {str(e)}")
 
     except Exception as e:
         results['errors'].append(str(e))

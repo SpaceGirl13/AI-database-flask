@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, g
 import json
 import os
 from datetime import datetime
-from api.jwt_authorize import token_required
+from api.jwt_authorize import token_required, optional_token
 from model.user import User
 from model.leaderboard import LeaderboardEntry
 from __init__ import db
@@ -203,23 +203,30 @@ def get_questions():
         return jsonify({'error': str(e)}), 500
 
 @game_api.route('/scores', methods=['POST'])
-@token_required()
+@optional_token()
 def save_score():
     """Save a player's score to the database"""
     try:
-        current_user = g.current_user
         score_data = request.json
 
         # Validate required fields
-        required_fields = ['score', 'correctAnswers', 'timestamp']
+        required_fields = ['score', 'correctAnswers']
         for field in required_fields:
             if field not in score_data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
+        # Get user info if logged in, otherwise use provided playerName or anonymous
+        if hasattr(g, 'current_user') and g.current_user:
+            uid = g.current_user.uid
+            player_name = g.current_user.name
+        else:
+            uid = score_data.get('playerName', f'anonymous_{datetime.now().strftime("%H%M%S")}')
+            player_name = score_data.get('playerName', 'Anonymous Player')
+
         # Create new leaderboard entry
         entry = LeaderboardEntry(
-            uid=current_user.uid,
-            player_name=current_user.name,
+            uid=uid,
+            player_name=player_name,
             score=score_data['score'],
             correct_answers=score_data['correctAnswers']
         )
@@ -231,15 +238,16 @@ def save_score():
 
         was_newly_awarded = False
         badge_info = None
-        if current_user.uid in top_10_uids:
+        if hasattr(g, 'current_user') and g.current_user and g.current_user.uid in top_10_uids:
             badge_id = 'super_smart_genius'
-            was_newly_awarded = current_user.add_badge(badge_id)
+            was_newly_awarded = g.current_user.add_badge(badge_id)
             if was_newly_awarded:
                 badge_info = get_badge_info(badge_id)
 
         response_data = {
             'success': True,
             'message': 'Score saved successfully',
+            'entry': entry.read(),
             'badge_awarded': was_newly_awarded
         }
 
@@ -249,6 +257,7 @@ def save_score():
         return jsonify(response_data), 200
 
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @game_api.route('/leaderboard', methods=['GET'])

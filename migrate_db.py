@@ -8,7 +8,7 @@ try:
     from model.user import User, Section, UserSection
     from model.stocks import StockUser
     from model.questions import Question, initQuestions
-    from model.feedback import Feedback
+    from model.feedback import Feedback, initFeedback
     from model.post import Post
     from model.study import Study
     
@@ -197,6 +197,25 @@ def migrate():
                     print(f"✓ Submodule feedback table already has {feedback_count} records")
             except Exception as e:
                 print(f"⚠️  Error checking submodule feedback table: {e}")
+
+            # Initialize general feedbacks
+            print("🔍 Checking feedbacks table...")
+            try:
+                general_feedback_count = Feedback.query.count()
+                if general_feedback_count == 0:
+                    print("🌱 Feedbacks table is empty, initializing seed data...")
+                    try:
+                        initFeedback()
+                        new_count = Feedback.query.count()
+                        print(f"✅ Initialized {new_count} feedback entries")
+                    except Exception as e:
+                        print(f"⚠️  Error initializing feedbacks: {e}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"✓ Feedbacks table already has {general_feedback_count} records")
+            except Exception as e:
+                print(f"⚠️  Error checking feedbacks table: {e}")
 
     except Exception as e:
         print(f"⚠️  Seed data initialization error: {e}")
