@@ -44,6 +44,7 @@ cors = CORS(
        'https://pages.opencodingsociety.com',
        'https://spacegirl13.github.io',
        'https://aistudybuddy.github.io',
+       'https://aistudybuddy.opencodingsociety.com',
    ],
    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
    allow_headers=["Content-Type", "Authorization", "X-Origin"]
