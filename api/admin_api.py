@@ -1,11 +1,52 @@
 """Admin API for managing database tables"""
 from flask import Blueprint, jsonify, request
 from __init__ import db
-from model.survey_results import SurveyResponse, AIToolPreference
-from model.questions import Question
-from model.leaderboard import LeaderboardEntry
+from model.survey_results import SurveyResponse, AIToolPreference, initSurveyResults
+from model.questions import Question, initQuestions
+from model.leaderboard import LeaderboardEntry, initLeaderboard
 
 admin_api = Blueprint('admin_api', __name__, url_prefix='/api/admin')
+
+
+# ========== Manual Seed Endpoint ==========
+
+@admin_api.route('/seed-data', methods=['POST'])
+def seed_data():
+    """Manually seed the database with initial data"""
+    results = {
+        'survey': {'before': 0, 'after': 0, 'error': None},
+        'leaderboard': {'before': 0, 'after': 0, 'error': None},
+        'questions': {'before': 0, 'after': 0, 'error': None}
+    }
+
+    # Seed survey responses
+    try:
+        results['survey']['before'] = SurveyResponse.query.count()
+        if results['survey']['before'] == 0:
+            initSurveyResults()
+        results['survey']['after'] = SurveyResponse.query.count()
+    except Exception as e:
+        results['survey']['error'] = str(e)
+
+    # Seed leaderboard
+    try:
+        results['leaderboard']['before'] = LeaderboardEntry.query.count()
+        if results['leaderboard']['before'] == 0:
+            initLeaderboard()
+        results['leaderboard']['after'] = LeaderboardEntry.query.count()
+    except Exception as e:
+        results['leaderboard']['error'] = str(e)
+
+    # Seed questions
+    try:
+        results['questions']['before'] = Question.query.count()
+        if results['questions']['before'] == 0:
+            initQuestions()
+        results['questions']['after'] = Question.query.count()
+    except Exception as e:
+        results['questions']['error'] = str(e)
+
+    return jsonify(results)
 
 # ========== Survey Responses (with Username included) ==========
 
