@@ -1,253 +1,209 @@
-""" Database models for Survey Results (Submodule 1) """
+"""Database models for Badge System"""
 from __init__ import app, db
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
 
-class SurveyResponse(db.Model):
+class Badge(db.Model):
     """
-    SurveyResponse Model
-
-    Represents a survey response from a user.
-
+    Badge Model
+    
+    Represents a badge definition with metadata.
+    
     Attributes:
-        id (Column): Primary key, unique identifier for the response.
-        user_id (Column): User identifier (sequential).
-        _username (Column): The user's username.
-        _uses_ai_schoolwork (Column): Whether the user uses AI for schoolwork (Yes/No).
-        _policy_perspective (Column): User's perspective on AI policy (FRQ text).
-        _completed_at (Column): Timestamp when the survey was completed.
-        _badge_awarded (Column): Whether a badge was awarded for this response.
+        id (Column): Primary key, unique identifier for the badge.
+        _badge_id (Column): Unique string identifier (e.g., 'delightful_data_scientist').
+        _name (Column): Display name of the badge.
+        _description (Column): Description of what the badge represents.
+        _requirement (Column): What is required to earn this badge.
+        _image_url (Column): URL to the badge image.
     """
-    __tablename__ = 'survey_responses'
+    __tablename__ = 'badges'
     __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False)
-    _username = db.Column(db.String(255), nullable=False)
-    _uses_ai_schoolwork = db.Column(db.String(10), nullable=False)
-    _policy_perspective = db.Column(db.Text, nullable=True)
-    _completed_at = db.Column(db.DateTime, default=datetime.utcnow)
-    _badge_awarded = db.Column(db.Boolean, default=False)
+    _badge_id = db.Column(db.String(255), unique=True, nullable=False)
+    _name = db.Column(db.String(255), nullable=False)
+    _description = db.Column(db.Text, nullable=False)
+    _requirement = db.Column(db.String(255), nullable=False)
+    _image_url = db.Column(db.Text, nullable=False)
 
-    # One-to-many relationship with AIToolPreference
-    preferences = db.relationship('AIToolPreference', backref='response', lazy=True, cascade='all, delete-orphan')
+    # Many-to-many relationship with User
+    # Avoid forcing a subquery load on User (which can fail if the table is missing). Use 'select' to load lazily when accessed.
+    # Add 'overlaps' to the backref to silence SAWarnings about overlapping relationships
+    users = db.relationship('User', secondary='user_badges', backref=db.backref('badge_list', lazy='select', overlaps='user_badges_rel,users'))
 
-    def __init__(self, user_id, username, uses_ai_schoolwork, policy_perspective=None, badge_awarded=False):
+    def __init__(self, badge_id, name, description, requirement, image_url):
+        self._badge_id = badge_id
+        self._name = name
+        self._description = description
+        self._requirement = requirement
+        self._image_url = image_url
+
+    @property
+    def badge_id(self):
+        return self._badge_id
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def description(self):
+        return self._description
+
+    @property
+    def requirement(self):
+        return self._requirement
+
+    @property
+    def image_url(self):
+        return self._image_url
+
+    def read(self):
+        return {
+            "id": self._badge_id,
+            "name": self._name,
+            "description": self._description,
+            "requirement": self._requirement,
+            "image_url": self._image_url
+        }
+
+    def create(self):
+        try:
+            db.session.add(self)
+            db.session.commit()
+            return self
+        except Exception:
+            # Rollback on any DB error (IntegrityError, OperationalError, etc.)
+            db.session.rollback()
+            return None
+
+    def delete(self):
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            return None
+        except Exception:
+            db.session.rollback()
+            return None
+
+
+class UserBadge(db.Model):
+    """
+    UserBadge Model
+    
+    A many-to-many relationship between users and badges.
+    Tracks when a user earned a badge.
+    
+    Attributes:
+        user_id (Column): Foreign key referencing the users table.
+        badge_id (Column): Foreign key referencing the badges table.
+        awarded_at (Column): Timestamp when the badge was awarded.
+    """
+    __tablename__ = 'user_badges'
+    __table_args__ = {'extend_existing': True}
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    badge_id = db.Column(db.Integer, db.ForeignKey('badges.id'), primary_key=True)
+    awarded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    # Add 'overlaps' to avoid SAWarning about relationship overlap with 'Badge.users' and 'User.badge_list'
+    user = db.relationship('User', backref=db.backref('user_badges_rel', cascade='all, delete-orphan', overlaps='badge_list,users'), overlaps='badge_list,users')
+    badge = db.relationship('Badge', backref=db.backref('user_badges_rel', cascade='all, delete-orphan', overlaps='badge_list,users'), overlaps='badge_list,users')
+
+    def __init__(self, user_id, badge_id):
         self.user_id = user_id
-        self._username = username
-        self._uses_ai_schoolwork = uses_ai_schoolwork
-        self._policy_perspective = policy_perspective
-        self._badge_awarded = badge_awarded
-
-    @property
-    def username(self):
-        return self._username
-
-    @username.setter
-    def username(self, value):
-        self._username = value
-
-    @property
-    def uses_ai_schoolwork(self):
-        return self._uses_ai_schoolwork
-
-    @uses_ai_schoolwork.setter
-    def uses_ai_schoolwork(self, value):
-        self._uses_ai_schoolwork = value
-
-    @property
-    def policy_perspective(self):
-        return self._policy_perspective
-
-    @policy_perspective.setter
-    def policy_perspective(self, value):
-        self._policy_perspective = value
-
-    @property
-    def completed_at(self):
-        return self._completed_at
-
-    @property
-    def badge_awarded(self):
-        return self._badge_awarded
-
-    @badge_awarded.setter
-    def badge_awarded(self, value):
-        self._badge_awarded = value
-
-    def create(self):
-        try:
-            db.session.add(self)
-            db.session.commit()
-            return self
-        except IntegrityError:
-            db.session.rollback()
-            return None
+        self.badge_id = badge_id
 
     def read(self):
         return {
-            "id": self.id,
             "user_id": self.user_id,
-            "username": self._username,
-            "uses_ai_schoolwork": self._uses_ai_schoolwork,
-            "policy_perspective": self._policy_perspective,
-            "completed_at": self._completed_at.isoformat() if self._completed_at else None,
-            "badge_awarded": self._badge_awarded,
-            "preferences": [pref.read() for pref in self.preferences]
+            "badge_id": self.badge_id,
+            "awarded_at": self.awarded_at.isoformat() if self.awarded_at else None
         }
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
-        return None
-
-
-class AIToolPreference(db.Model):
-    """
-    AIToolPreference Model
-
-    Represents a user's preferred AI tool for a specific subject.
-
-    Attributes:
-        id (Column): Primary key, unique identifier for the preference.
-        response_id (Column): Foreign key referencing the survey_responses table.
-        _subject (Column): The subject (english, math, science, cs, history).
-        _ai_tool (Column): The preferred AI tool (ChatGPT, Claude, Gemini, Copilot).
-    """
-    __tablename__ = 'ai_tool_preferences'
-    __table_args__ = {'extend_existing': True}
-
-    id = db.Column(db.Integer, primary_key=True)
-    response_id = db.Column(db.Integer, db.ForeignKey('survey_responses.id'), nullable=False)
-    _subject = db.Column(db.String(50), nullable=False)
-    _ai_tool = db.Column(db.String(50), nullable=False)
-
-    def __init__(self, response_id, subject, ai_tool):
-        self.response_id = response_id
-        self._subject = subject
-        self._ai_tool = ai_tool
-
-    @property
-    def subject(self):
-        return self._subject
-
-    @subject.setter
-    def subject(self, value):
-        self._subject = value
-
-    @property
-    def ai_tool(self):
-        return self._ai_tool
-
-    @ai_tool.setter
-    def ai_tool(self, value):
-        self._ai_tool = value
 
     def create(self):
         try:
             db.session.add(self)
             db.session.commit()
             return self
-        except IntegrityError:
+        except Exception:
             db.session.rollback()
             return None
 
-    def read(self):
-        return {
-            "id": self.id,
-            "response_id": self.response_id,
-            "subject": self._subject,
-            "ai_tool": self._ai_tool
-        }
-
     def delete(self):
-        db.session.delete(self)
-        db.session.commit()
-        return None
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            return None
+        except Exception:
+            db.session.rollback()
+            return None
 
 
-"""Database Creation and Testing"""
-import random
-
-
-def initSurveyResults():
-    """Initialize survey results with 100 staged test responses"""
+def init_badges():
+    """Initialize the badge database with badge definitions"""
     with app.app_context():
         db.create_all()
-
-        # AI tools and their weighted probabilities for each subject
-        ai_tools = ['ChatGPT', 'Claude', 'Gemini', 'Copilot']
-
-        # Subject-specific weights (some tools are more popular for certain subjects)
-        subject_weights = {
-            'english': [0.35, 0.25, 0.25, 0.15],  # ChatGPT popular for writing
-            'math': [0.20, 0.35, 0.25, 0.20],     # Claude good for math
-            'science': [0.30, 0.25, 0.30, 0.15],  # ChatGPT/Gemini for science
-            'cs': [0.25, 0.30, 0.20, 0.25],       # Claude/Copilot for coding
-            'history': [0.30, 0.20, 0.35, 0.15],  # Gemini for research
+        
+        badge_definitions = {
+            'delightful_data_scientist': {
+                'name': 'Delightful Data Scientist',
+                'description': 'Mastered foundational AI concepts and data literacy',
+                'requirement': 'Complete Submodule 1',
+                'image_url': 'https://github.com/user-attachments/assets/d3d6f596-cae3-401d-9390-a3721aa7cfb3'
+            },
+            'perfect_prompt_engineer': {
+                'name': 'Perfect Prompt Engineer',
+                'description': 'Demonstrated expertise in crafting effective AI prompts',
+                'requirement': 'Complete Submodule 2',
+                'image_url': 'https://github.com/user-attachments/assets/65a9a19a-4f0a-4e08-8a70-cd37c1e75b7d'
+            },
+            'prodigy_problem_solver': {
+                'name': 'Prodigy Problem Solver',
+                'description': 'Applied AI knowledge to solve real-world challenges',
+                'requirement': 'Complete Submodule 3',
+                'image_url': 'https://github.com/user-attachments/assets/d85f749c-2380-4427-96af-20b462e65514'
+            },
+            'responsible_ai_master': {
+                'name': 'Responsible AI Master',
+                'description': 'Achieved comprehensive understanding of ethical AI practices',
+                'requirement': 'Complete Entire Quest',
+                'image_url': 'https://github.com/user-attachments/assets/93e2fc3f-4ab4-4eef-8369-6a4c3a18f660'
+            },
+            'super_smart_genius': {
+                'name': 'Super Smart Genius',
+                'description': 'Ranked among top performers in the platform',
+                'requirement': 'Make the Leaderboard',
+                'image_url': 'https://github.com/user-attachments/assets/6a96f46c-b926-4c44-8926-1ffbba007a05'
+            },
+            'intelligent_instructor': {
+                'name': 'Intelligent Instructor',
+                'description': 'Crafted a high-quality, effective AI prompt',
+                'requirement': 'Create a "Good" Prompt',
+                'image_url': 'https://github.com/user-attachments/assets/b1a7fc47-da59-4f14-a8d0-2b4c36df7cc5'
+            },
+            'sensational_surveyor': {
+                'name': 'Sensational Surveyor',
+                'description': 'Provided valuable feedback to improve the platform',
+                'requirement': 'Submit the Survey',
+                'image_url': 'https://github.com/user-attachments/assets/5aebe49f-d1e5-4340-bba0-7e3e5b3afae2'
+            }
         }
-
-        # Sample FRQ responses
-        frq_responses = [
-            "I believe AI policies need to strike a balance between preventing academic dishonesty and allowing students to learn how to use AI as a tool. Rather than banning AI completely, I think we should learn how to use it ethically and responsibly.",
-            "I believe AI policies should focus on helping students learn responsibly. AI should support understanding, brainstorming, and feedback without replacing original thinking or academic honesty.",
-            "AI should be allowed sometimes in classes as a way for students to enhance their learning.",
-            "I would want to use AI to provide examples and simplify concepts that I don't understand.",
-            "I want to use AI effectively to learn by using examples and practice problems.",
-            "AI should be allowed to use in classes. AI can act as a tutor to help students learn information rather than doing their homework for them.",
-            "AI tools should be embraced in education as they represent the future of work. Learning to use them effectively is a valuable skill.",
-            "I think it's important to cite when I've used AI and be transparent about how I've incorporated it into my work.",
-            "AI should enhance my learning, not replace it. I would still write my own original responses and do my own critical thinking.",
-            "Schools should teach students how to use AI responsibly rather than banning it outright. AI literacy is becoming essential.",
-            "I use AI to check my work and get feedback, but I always do the initial thinking myself.",
-            "AI helps me understand difficult concepts by explaining them in different ways until I get it.",
-            "I think AI should be allowed for research and brainstorming, but not for writing final answers.",
-            "Using AI as a study buddy has helped me learn more efficiently and retain information better.",
-            "AI policies should differentiate between using AI to learn vs. using AI to cheat.",
-            "I appreciate AI for helping me overcome writer's block and generate ideas to build upon.",
-            "Schools need to adapt to the reality that AI is everywhere. Teaching ethical use is more practical than banning it.",
-            "AI has made learning more accessible for students who struggle with traditional teaching methods.",
-            "I use AI to get unstuck when I'm confused, then I work through the problem myself.",
-            "The key is transparency - students should disclose when and how they use AI in their work.",
-        ]
-
-        # Create 100 survey responses directly (no separate SurveyUser table)
-        for i in range(1, 101):
-            username = f"student_{i:03d}"
-
-            # Check if response already exists for this user_id
-            existing_response = SurveyResponse.query.filter_by(user_id=i).first()
-            if existing_response:
-                continue
-
-            # 85% say Yes to using AI, 15% say No
-            uses_ai = "Yes" if random.random() < 0.85 else "No"
-
-            # Random FRQ response
-            frq = random.choice(frq_responses)
-
-            # Create survey response with username directly
-            response = SurveyResponse(
-                user_id=i,
-                username=username,
-                uses_ai_schoolwork=uses_ai,
-                policy_perspective=frq,
-                badge_awarded=True
-            )
-            db.session.add(response)
-            db.session.commit()
-
-            # Create AI tool preferences for each subject using weighted random
-            for subject, weights in subject_weights.items():
-                ai_tool = random.choices(ai_tools, weights=weights, k=1)[0]
-                preference = AIToolPreference(
-                    response_id=response.id,
-                    subject=subject,
-                    ai_tool=ai_tool
+        
+        # Create badges if they don't exist
+        for badge_key, badge_data in badge_definitions.items():
+            existing_badge = Badge.query.filter_by(_badge_id=badge_key).first()
+            if not existing_badge:
+                badge = Badge(
+                    badge_id=badge_key,
+                    name=badge_data['name'],
+                    description=badge_data['description'],
+                    requirement=badge_data['requirement'],
+                    image_url=badge_data['image_url']
                 )
-                db.session.add(preference)
-
-            db.session.commit()
-
-        print(f"Initialized {SurveyResponse.query.count()} survey responses")
+                badge.create()
+        
+        print(f"Initialized {Badge.query.count()} badges")

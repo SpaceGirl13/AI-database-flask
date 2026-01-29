@@ -375,52 +375,85 @@ class User(db.Model, UserMixin):
     def add_badge(self, badge_id):
         """
         Add a badge to the user if they don't already have it.
-        Returns True ONLY if this is a NEW badge award.
-        Returns False if the badge already exists.
-       
-        :param badge_id: The unique identifier for the badge
-        :return: True if badge was newly awarded, False if already exists
+        Tries to use the transactional UserBadge junction table if available.
+        Falls back to the JSON-backed `_badges` field if the junction table is missing.
+        Returns True ONLY if this is a NEW badge award. Returns False otherwise.
         """
-        # Ensure badges is initialized as a list
-        current_badges = self.badges if self.badges else []
-       
-        # Check if badge already exists
-        if badge_id in current_badges:
-            return False  # Badge already awarded - don't show notification
-       
-        # Add new badge
-        current_badges.append(badge_id)
-        self._badges = json.dumps(current_badges)  # Store as JSON string
-       
-        # Commit to database
+        # Attempt to use the transaction-backed UserBadge table first
         try:
-            db.session.commit()
-            return True  # NEW badge awarded - show notification
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error awarding badge: {e}")
-            return False
+            # Local import to avoid circular imports
+            from model.badge_t import Badge, UserBadge
+            # Ensure badge exists
+            badge = Badge.query.filter_by(_badge_id=badge_id).first()
+            if not badge:
+                return False
+
+            # Check if transactional relationship already exists
+            try:
+                existing = UserBadge.query.filter_by(user_id=self.id, badge_id=badge.id).first()
+                if existing:
+                    return False
+
+                user_badge = UserBadge(user_id=self.id, badge_id=badge.id)
+                created = user_badge.create()
+                if created:
+                    return True
+                # If creation failed for integrity reasons, fall through to JSON fallback
+            except Exception:
+                # Likely OperationalError (table missing) or other DB-level issue
+                raise
+        except Exception:
+            # Fallback to JSON-backed badges when the junction table is unavailable
+            current_badges = self.badges if self.badges else []
+            if badge_id in current_badges:
+                return False
+            current_badges.append(badge_id)
+            self._badges = json.dumps(current_badges)
+            try:
+                db.session.commit()
+                return True
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error awarding badge (JSON fallback): {e}")
+                return False
 
     def has_badge(self, badge_id):
         """
         Check if user has a specific badge.
-       
-        :param badge_id: The unique identifier for the badge
-        :return: True if user has the badge, False otherwise
+        Tries transactional table first and falls back to JSON storage.
         """
+        try:
+            from model.badge_t import Badge, UserBadge
+            badge = Badge.query.filter_by(_badge_id=badge_id).first()
+            if badge:
+                existing = UserBadge.query.filter_by(user_id=self.id, badge_id=badge.id).first()
+                if existing:
+                    return True
+        except Exception:
+            # Fall back to JSON field
+            pass
         return badge_id in (self.badges if self.badges else [])
 
     def read_badges(self):
         """
         Return badges in a readable format.
-       
-        :return: Dictionary with badges list and count
+        Prefer transactional UserBadge rows when available, otherwise use JSON field.
         """
-        badges_list = self.badges if self.badges else []
-        return {
-            'badges': badges_list,
-            'badge_count': len(badges_list)
-        }
+        try:
+            from model.badge_t import UserBadge
+            user_badge_objs = UserBadge.query.filter_by(user_id=self.id).all()
+            badges_list = [ub.badge._badge_id for ub in user_badge_objs]
+            return {
+                'badges': badges_list,
+                'badge_count': len(badges_list)
+            }
+        except Exception:
+            # Fallback to JSON-backed badges
+            badges_list = self.badges if self.badges else []
+            return {
+                'badges': badges_list,
+                'badge_count': len(badges_list)
+            }
 
     # CRUD create/add a new record to the table
     # returns self or None on error

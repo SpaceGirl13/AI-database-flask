@@ -6,6 +6,8 @@ from model.questions import Question, initQuestions
 from model.leaderboard import LeaderboardEntry, initLeaderboard
 from model.submodule_feedback import SubmoduleFeedback, initSubmoduleFeedback
 from model.feedback import Feedback, initFeedback
+from model.badge_t import Badge, UserBadge, init_badges
+from model.user import User
 
 admin_api = Blueprint('admin_api', __name__, url_prefix='/api/admin')
 
@@ -397,3 +399,104 @@ def delete_submodule_feedback(id):
     entry = SubmoduleFeedback.query.get_or_404(id)
     entry.delete()
     return jsonify({'message': 'Feedback entry deleted'})
+
+
+# ========== Badges & User Badges Management ==========
+@admin_api.route('/badges', methods=['GET'])
+def get_badges():
+    """Return all badge definitions"""
+    try:
+        badges = Badge.query.all()
+        return jsonify([b.read() for b in badges])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_api.route('/user-badges', methods=['GET'])
+def get_user_badges():
+    """Return user-badge mappings"""
+    try:
+        limit = request.args.get('limit', 100, type=int)
+        ubs = UserBadge.query.limit(limit).all()
+        results = []
+        for ub in ubs:
+            results.append({
+                'user_id': ub.user_id,
+                'uid': ub.user._uid if ub.user else None,
+                'username': ub.user._name if ub.user else None,
+                'badge_id': ub.badge._badge_id if ub.badge else None,
+                'badge_name': ub.badge._name if ub.badge else None,
+                'awarded_at': ub.awarded_at.isoformat() if ub.awarded_at else None
+            })
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_api.route('/user-badges', methods=['POST'])
+def create_user_badge():
+    """Create a new user-badge mapping. Accepts JSON: {"uid": "alice", "badge_id": "delightful_data_scientist"} or user_id + badge_id"""
+    try:
+        data = request.get_json() or {}
+        uid = data.get('uid')
+        user_id = data.get('user_id')
+        badge_key = data.get('badge_id')
+        if not (badge_key and (uid or user_id)):
+            return jsonify({'error': 'badge_id and (uid or user_id) required'}), 400
+
+        user = None
+        if user_id:
+            user = User.query.get(user_id)
+        else:
+            user = User.query.filter_by(_uid=uid).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        badge = Badge.query.filter_by(_badge_id=badge_key).first()
+        if not badge:
+            return jsonify({'error': 'Badge not found'}), 404
+
+        exists = UserBadge.query.filter_by(user_id=user.id, badge_id=badge.id).first()
+        if exists:
+            return jsonify({'success': True, 'message': 'Already exists'}), 200
+
+        ub = UserBadge(user_id=user.id, badge_id=badge.id)
+        created = ub.create()
+        if created:
+            return jsonify({'success': True, 'mapping': {'user_id': user.id, 'badge_id': badge._badge_id}}), 201
+        return jsonify({'error': 'Failed to create mapping'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_api.route('/user-badges', methods=['DELETE'])
+def delete_user_badge():
+    """Delete a user-badge mapping. Accepts JSON: {"uid": "alice", "badge_id": "delightful_data_scientist"} or user_id + badge_id"""
+    try:
+        data = request.get_json() or {}
+        uid = data.get('uid')
+        user_id = data.get('user_id')
+        badge_key = data.get('badge_id')
+        if not (badge_key and (uid or user_id)):
+            return jsonify({'error': 'badge_id and (uid or user_id) required'}), 400
+
+        user = None
+        if user_id:
+            user = User.query.get(user_id)
+        else:
+            user = User.query.filter_by(_uid=uid).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        badge = Badge.query.filter_by(_badge_id=badge_key).first()
+        if not badge:
+            return jsonify({'error': 'Badge not found'}), 404
+
+        mapping = UserBadge.query.filter_by(user_id=user.id, badge_id=badge.id).first()
+        if not mapping:
+            return jsonify({'success': True, 'message': 'Mapping not found'}), 200
+
+        mapping.delete()
+        return jsonify({'success': True, 'message': 'Mapping deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
