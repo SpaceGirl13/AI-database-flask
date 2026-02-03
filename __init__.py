@@ -88,10 +88,15 @@ if DB_ENDPOINT and DB_USERNAME and DB_PASSWORD:
    dbURI =  dbString + '/' + dbName
    backupURI = None  # MySQL backup would require a different approach
 else:
-   # Development - Use SQLite
-   dbString = 'sqlite:///volumes/'
-   dbURI = dbString + dbName + '.db'
-   backupURI = dbString + dbName + '_bak.db'
+   # Development - Use SQLite stored under the Flask instance folder to avoid mixing files
+   instance_volumes = os.path.join(app.instance_path, 'volumes')
+   os.makedirs(instance_volumes, exist_ok=True)
+   db_file_path = os.path.join(instance_volumes, dbName + '.db')
+   dbString = 'sqlite:///'  # base sqlite URI for on-disk file
+   dbURI = dbString + db_file_path
+   backupURI = dbString + os.path.join(instance_volumes, dbName + '_bak.db')
+   # Also expose the concrete file path for migration scripts
+   app.config['SQLALCHEMY_DATABASE_FILE'] = db_file_path
 # Set database configuration in Flask app
 app.config['DB_ENDPOINT'] = DB_ENDPOINT
 app.config['DB_USERNAME'] = DB_USERNAME

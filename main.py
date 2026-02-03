@@ -10,7 +10,7 @@ from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 from api.jwt_authorize import token_required
 from api.badge import badge_api
-
+from model.badge_t import init_badges
 
 
 # import "objects" from "this" project
@@ -102,9 +102,44 @@ app.register_blueprint(coding_questions_api, url_prefix='/api/coding')  # Regist
 app.register_blueprint(admin_api)  # Register admin API for database management
 # app.register_blueprint(announcement_api) ##temporary revert
 
-# Jokes file initialization
+# Jokes file initialization and ensure DB/tables are present
 with app.app_context():
-    initJokes()
+    # Ensure database tables exist
+    try:
+        db.create_all()
+    except Exception as e:
+        print(f"Warning: db.create_all() failed: {e}")
+
+    # Initialize jokes
+    try:
+        initJokes()
+    except Exception as e:
+        print(f"Warning: initJokes() failed: {e}")
+
+    # Initialize badges (creates badge defs and ensures tables)
+    try:
+        init_badges()
+    except Exception as e:
+        # Don't let badge init break app startup; log and continue
+        print(f"Warning: init_badges() failed: {e}")
+
+    # Initialize default users if none exist (idempotent)
+    try:
+        from model.user import initUsers
+        user_count = None
+        try:
+            user_count = User.query.count()
+        except Exception:
+            user_count = None
+        if not user_count:
+            print("🔧 No users found - initializing default users...")
+            try:
+                initUsers()
+                print("✅ Default users initialized")
+            except Exception as e:
+                print(f"Warning: initUsers() failed: {e}")
+    except Exception as e:
+        print(f"Warning: user initialization check failed: {e}")
 
 # Tell Flask-Login the view function name of your login route
 login_manager.login_view = "login"
@@ -339,14 +374,32 @@ custom_cli = AppGroup('custom', help='Custom commands')
 def generate_data():
     initUsers()
     init_microblogs()
-
+    init_badges()
+    
 # Register the custom command group with the Flask application
 app.cli.add_command(custom_cli)
         
 # this runs the flask application on the development server
 if __name__ == "__main__":
     host = "0.0.0.0"
-    port = app.config['FLASK_PORT']
-    print(f"** Server running: http://localhost:{port}")  # Pretty link
-    app.run(debug=True, host=host, port=port, use_reloader=False)
+    base_port = app.config.get('FLASK_PORT', 5000)
+    max_tries = 5
+    current_port = base_port
+    print(f"** Server attempting to start at http://localhost:{base_port}")
+
+    for attempt in range(max_tries):
+        try:
+            app.run(debug=True, host=host, port=current_port, use_reloader=False)
+            break
+        except OSError as e:
+            err = str(e).lower()
+            if 'address already in use' in err:
+                print(f"⚠️  Port {current_port} is in use. Trying next port...")
+                current_port += 1
+            else:
+                # unexpected OSError - re-raise
+                raise
+    else:
+        print(f"❌ Unable to bind to a port between {base_port} and {current_port}.")
+        print("Please free the port or set a different FLASK_PORT in app config.")
 

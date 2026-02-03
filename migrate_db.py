@@ -23,8 +23,10 @@ try:
 
     # Import entire modules to get all their models
     import model.classroom
+    # Import badge models and initialization helper
+    from model.badge_t import Badge, UserBadge, init_badges
     
-    print("✓ All models imported successfully at module level")
+    print("✓ All models (including badges) imported successfully at module level")
 except ImportError as e:
     print(f"❌ CRITICAL: Import error at module level: {e}")
     import traceback
@@ -71,6 +73,17 @@ def migrate():
                 print("   ✅ questions table confirmed")
             else:
                 print("   ⚠️  questions table MISSING!")
+
+            # Check badge-related tables
+            if 'badges' in tables:
+                print("   ✅ badges table confirmed")
+            else:
+                print("   ⚠️  badges table MISSING!")
+
+            if 'user_badges' in tables:
+                print("   ✅ user_badges (junction) table confirmed")
+            else:
+                print("   ⚠️  user_badges (junction) table MISSING!")
             
     except Exception as e:
         print(f"❌ Error creating tables: {e}")
@@ -216,6 +229,80 @@ def migrate():
                     print(f"✓ Feedbacks table already has {general_feedback_count} records")
             except Exception as e:
                 print(f"⚠️  Error checking feedbacks table: {e}")
+
+            # Initialize badges definitions and migrate legacy JSON badges into junction table
+            print("🔍 Checking badges and migrating user badges (if needed)...")
+            try:
+                # Ensure badge definitions exist
+                try:
+                    init_badges()
+                    print("✅ Badge definitions initialized/ensured")
+                except Exception as e:
+                    print(f"⚠️  init_badges() warning: {e}")
+
+                # Use SQLAlchemy inspector to check if user_badges table exists
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                tables = inspector.get_table_names()
+                if 'user_badges' not in tables:
+                    print("⚠️  user_badges table not present - skipping migration to junction table")
+                else:
+                    migrated = 0
+                    created_missing_badges = 0
+                    users = User.query.all()
+                    import json
+                    for user in users:
+                        raw = getattr(user, '_badges', '[]')
+                        try:
+                            badges_list = json.loads(raw) if raw else []
+                        except Exception:
+                            badges_list = []
+
+                        if not badges_list:
+                            continue
+
+                        for badge_key in badges_list:
+                            # Find the badge definition
+                            badge = Badge.query.filter_by(_badge_id=badge_key).first()
+                            if not badge:
+                                # Create a minimal badge record so we can map it
+                                print(f"   ⚠️  Badge definition '{badge_key}' missing; creating placeholder")
+                                badge = Badge(badge_id=badge_key, name=badge_key, description='Migrated placeholder', requirement='Unknown', image_url='')
+                                badge.create()
+                                created_missing_badges += 1
+
+                            # Check if mapping already exists
+                            exists = UserBadge.query.filter_by(user_id=user.id, badge_id=badge.id).first()
+                            if exists:
+                                continue
+
+                            # Insert mapping
+                            ub = UserBadge(user_id=user.id, badge_id=badge.id)
+                            created = ub.create()
+                            if created:
+                                migrated += 1
+
+                    print(f"✅ Migration complete: {migrated} badge mappings added; {created_missing_badges} badge definitions created")
+            except Exception as e:
+                print(f"⚠️  Error during badge migration: {e}")
+                import traceback
+                traceback.print_exc()
+
+            # Initialize default users if not present
+            print("🔍 Checking users table and creating default users if needed...")
+            try:
+                user_count = User.query.count()
+                if user_count == 0:
+                    print("🌱 No users found - running initUsers() to create default users...")
+                    try:
+                        initUsers()
+                        print(f"✅ Default users initialized: {User.query.count()} users now present")
+                    except Exception as e:
+                        print(f"⚠️  Error initializing default users: {e}")
+                else:
+                    print(f"✓ Users table already has {user_count} records")
+            except Exception as e:
+                print(f"⚠️  Could not check or initialize users table: {e}")
 
     except Exception as e:
         print(f"⚠️  Seed data initialization error: {e}")
