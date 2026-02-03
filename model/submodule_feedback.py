@@ -1,35 +1,38 @@
-""" Database model for Submodule Feedback Survey """
+""" Database model for Submodule Feedback Survey - Normalized Transaction Data """
 from __init__ import app, db
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import relationship
 
 
 class SubmoduleFeedback(db.Model):
     """
-    SubmoduleFeedback Model
+    SubmoduleFeedback Model - Normalized Transaction Data
 
-    Represents feedback from users for submodules 2 and 3.
+    Represents a single feedback transaction from a user for submodules 2 and 3.
+    Uses proper foreign key relationship to User table for normalization.
 
     Attributes:
-        id (Column): Primary key, unique identifier for the feedback.
-        _username (Column): The user's username.
+        id (Column): Primary key, unique identifier for the feedback transaction.
+        user_id (Column): Foreign key to users table (required for feedback tracking).
         _rating (Column): Rating given (1-5 scale).
         _category (Column): Which submodule (submodule2, submodule3).
         _comments (Column): Additional comments from the user.
-        _timestamp (Column): When the feedback was submitted.
+        _timestamp (Column): When the feedback transaction was submitted.
     """
     __tablename__ = 'submodule_feedback'
     __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
-    _username = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     _rating = db.Column(db.Integer, nullable=False)
     _category = db.Column(db.String(50), nullable=False)
     _comments = db.Column(db.Text, nullable=True)
     _timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def __init__(self, username, rating, category, comments=None, timestamp=None):
-        self._username = username
+
+    def __init__(self, user_id, rating, category, comments=None, timestamp=None):
+        self.user_id = user_id
         self._rating = rating
         self._category = category
         self._comments = comments
@@ -37,11 +40,12 @@ class SubmoduleFeedback(db.Model):
 
     @property
     def username(self):
-        return self._username
-
-    @username.setter
-    def username(self, value):
-        self._username = value
+        """Get username from related User object (normalized access)"""
+        from model.user import User
+        user = User.query.get(self.user_id)
+        if user:
+            return user.uid
+        return None
 
     @property
     def rating(self):
@@ -83,7 +87,8 @@ class SubmoduleFeedback(db.Model):
     def read(self):
         return {
             "id": self.id,
-            "username": self._username,
+            "user_id": self.user_id,
+            "username": self.username,  # Derived from User relationship
             "rating": self._rating,
             "category": self._category,
             "comments": self._comments,
@@ -97,15 +102,22 @@ class SubmoduleFeedback(db.Model):
 
     @staticmethod
     def get_by_category(category):
-        """Get all feedback for a specific category (submodule2, submodule3)"""
+        """Get all feedback transactions for a specific category (submodule2, submodule3)"""
         return SubmoduleFeedback.query.filter_by(_category=category).order_by(
             SubmoduleFeedback._timestamp.desc()
         ).all()
 
     @staticmethod
     def get_all_feedback():
-        """Get all feedback sorted by timestamp (newest first)"""
+        """Get all feedback transactions sorted by timestamp (newest first)"""
         return SubmoduleFeedback.query.order_by(
+            SubmoduleFeedback._timestamp.desc()
+        ).all()
+
+    @staticmethod
+    def get_user_feedback(user_id):
+        """Get all feedback transactions for a specific user"""
+        return SubmoduleFeedback.query.filter_by(user_id=user_id).order_by(
             SubmoduleFeedback._timestamp.desc()
         ).all()
 
@@ -125,7 +137,9 @@ import random
 
 
 def initSubmoduleFeedback():
-    """Initialize feedback with sample data"""
+    """Initialize submodule feedback with sample transaction data"""
+    from model.user import User
+
     with app.app_context():
         db.create_all()
 
@@ -134,8 +148,12 @@ def initSubmoduleFeedback():
             print("Submodule feedback already initialized")
             return
 
-        # Sample usernames
-        usernames = [f"student_{i:03d}" for i in range(1, 21)]
+        # Get existing users to link feedback (normalized relationship)
+        users = User.query.all()
+
+        if not users:
+            print("No users found. Please initialize users first.")
+            return
 
         # Sample comments
         sample_comments = [
@@ -155,19 +173,22 @@ def initSubmoduleFeedback():
 
         categories = ['submodule2', 'submodule3']
 
-        # Create 20 sample feedback entries
-        for username in usernames:
-            category = random.choice(categories)
-            rating = random.randint(3, 5)  # Ratings between 3-5
-            comments = random.choice(sample_comments)
+        # Create sample feedback transaction entries for existing users
+        # Each user gets 2-4 feedback submissions (transactions)
+        for user in users:
+            num_feedbacks = random.randint(2, 4)
+            for _ in range(num_feedbacks):
+                category = random.choice(categories)
+                rating = random.randint(3, 5)  # Ratings between 3-5
+                comments = random.choice(sample_comments)
 
-            feedback = SubmoduleFeedback(
-                username=username,
-                rating=rating,
-                category=category,
-                comments=comments
-            )
-            db.session.add(feedback)
+                feedback = SubmoduleFeedback(
+                    user_id=user.id,
+                    rating=rating,
+                    category=category,
+                    comments=comments
+                )
+                db.session.add(feedback)
 
         db.session.commit()
-        print(f"Initialized {SubmoduleFeedback.query.count()} submodule feedback entries")
+        print(f"Initialized {SubmoduleFeedback.query.count()} submodule feedback transaction entries")

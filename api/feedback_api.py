@@ -1,14 +1,15 @@
 import os
 import requests
-from flask import Blueprint, request, jsonify, session 
+from flask import Blueprint, request, jsonify, session
 from flask_restful import Api, Resource
 from model.feedback import Feedback
+from model.user import User
 from __init__ import app, db
 
 feedback_api = Blueprint('feedback_api', __name__, url_prefix='/api/feedback')
 api = Api(feedback_api)
 
-GITHUB_REPO = "Open-Coding-Society/pages"  
+GITHUB_REPO = "Open-Coding-Society/pages"
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 class FeedbackAPI:
@@ -17,19 +18,28 @@ class FeedbackAPI:
             data = request.get_json()
             title = data.get('title')
             body = data.get('body')
-            github_username = data.get('uid', 'Anonymous')
+            uid = data.get('uid')  # User's uid to look up user_id
 
             if not title or not body:
                 return {"message": "Title and body are required."}, 400
-            
+
             type = data.get('type', 'Other')  # default to 'Other' if not provided
+
+            # Look up user by uid to get user_id (normalized foreign key)
+            user_id = None
+            github_username = 'Anonymous'
+            if uid:
+                user = User.query.filter_by(_uid=uid).first()
+                if user:
+                    user_id = user.id
+                    github_username = user.uid
 
             # Ensure type is a valid GitHub label
             valid_types = ['Bug', 'Feature Request', 'Inquiry', 'Other']
             label = type if type in valid_types else 'Other'
             author_note = f"_Submitted by @{github_username}_" if github_username != 'Anonymous' else "_Submitted by [Anonymous]_"
 
-            feedback = Feedback(title, body, type, github_username).create()
+            feedback = Feedback(title, body, type, user_id).create()
 
             # Attempt to create GitHub issue
             headers = {
@@ -67,7 +77,13 @@ class FeedbackAPI:
         
     class _UserFeedback(Resource):
         def get(self, uid):
-            feedbacks = Feedback.query.filter_by(github_username=uid).order_by(Feedback.created_at.desc()).all()
+            # Look up user by uid to get user_id (normalized query)
+            user = User.query.filter_by(_uid=uid).first()
+            if not user:
+                return jsonify([])  # Return empty if user not found
+
+            # Query feedbacks using normalized user_id foreign key
+            feedbacks = Feedback.query.filter_by(user_id=user.id).order_by(Feedback.created_at.desc()).all()
 
             headers = {
                 "Authorization": f"Bearer {GITHUB_TOKEN}",
@@ -97,7 +113,11 @@ class FeedbackAPI:
                     print(f"Error checking issue status: {e}")
 
                 result.append({
+                    "id": fb.id,
+                    "user_id": fb.user_id,
+                    "username": fb.username,  # Derived from normalized relationship
                     "title": fb.title,
+                    "body": fb.body,
                     "created_at": fb.created_at.isoformat(),
                     "type": fb.type,
                     "github_issue_url": fb.github_issue_url,

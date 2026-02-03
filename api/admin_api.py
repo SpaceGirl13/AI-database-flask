@@ -318,16 +318,53 @@ def get_leaderboard_entry(id):
     entry = LeaderboardEntry.query.get_or_404(id)
     return jsonify(entry.read())
 
+@admin_api.route('/leaderboard', methods=['POST'])
+def create_leaderboard_entry():
+    """Create a new leaderboard entry (transaction)"""
+    from model.user import User
+
+    data = request.get_json()
+
+    # Require user_id for normalized schema
+    user_id = data.get('user_id')
+    uid = data.get('uid')  # Alternative: look up by uid
+
+    if not user_id and uid:
+        user = User.query.filter_by(_uid=uid).first()
+        if user:
+            user_id = user.id
+
+    if not user_id:
+        return jsonify({'error': 'user_id or valid uid is required'}), 400
+
+    score = data.get('score', 0)
+    correct_answers = data.get('correctAnswers', 0)
+
+    entry = LeaderboardEntry(
+        user_id=user_id,
+        score=score,
+        correct_answers=correct_answers
+    )
+    entry.create()
+    return jsonify(entry.read()), 201
+
 @admin_api.route('/leaderboard/<int:id>', methods=['PUT'])
 def update_leaderboard_entry(id):
-    """Update a leaderboard entry"""
+    """Update a leaderboard entry (transaction data)"""
+    from model.user import User
+
     entry = LeaderboardEntry.query.get_or_404(id)
     data = request.get_json()
 
-    if 'uid' in data:
-        entry.uid = data['uid']
-    if 'playerName' in data:
-        entry.player_name = data['playerName']
+    # Allow updating user_id (normalized foreign key)
+    if 'user_id' in data:
+        entry.user_id = data['user_id']
+    elif 'uid' in data:
+        # Look up user by uid for convenience
+        user = User.query.filter_by(_uid=data['uid']).first()
+        if user:
+            entry.user_id = user.id
+
     if 'score' in data:
         entry.score = data['score']
     if 'correctAnswers' in data:
@@ -373,14 +410,54 @@ def get_submodule_feedback(id):
     entry = SubmoduleFeedback.query.get_or_404(id)
     return jsonify(entry.read())
 
+@admin_api.route('/submodule-feedback', methods=['POST'])
+def create_submodule_feedback():
+    """Create a new submodule feedback entry (transaction)"""
+    from model.user import User
+
+    data = request.get_json()
+
+    # Require user_id for normalized schema
+    user_id = data.get('user_id')
+    uid = data.get('uid')  # Alternative: look up by uid
+
+    if not user_id and uid:
+        user = User.query.filter_by(_uid=uid).first()
+        if user:
+            user_id = user.id
+
+    if not user_id:
+        return jsonify({'error': 'user_id or valid uid is required'}), 400
+
+    rating = data.get('rating', 3)
+    category = data.get('category', 'submodule2')
+    comments = data.get('comments')
+
+    entry = SubmoduleFeedback(
+        user_id=user_id,
+        rating=rating,
+        category=category,
+        comments=comments
+    )
+    entry.create()
+    return jsonify(entry.read()), 201
+
 @admin_api.route('/submodule-feedback/<int:id>', methods=['PUT'])
 def update_submodule_feedback(id):
-    """Update a feedback entry"""
+    """Update a feedback entry (transaction data)"""
+    from model.user import User
+
     entry = SubmoduleFeedback.query.get_or_404(id)
     data = request.get_json()
 
-    if 'username' in data:
-        entry.username = data['username']
+    # Allow updating user_id (normalized foreign key)
+    if 'user_id' in data:
+        entry.user_id = data['user_id']
+    elif 'uid' in data:
+        user = User.query.filter_by(_uid=data['uid']).first()
+        if user:
+            entry.user_id = user.id
+
     if 'rating' in data:
         entry.rating = data['rating']
     if 'category' in data:

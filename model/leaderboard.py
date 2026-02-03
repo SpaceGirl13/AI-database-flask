@@ -1,4 +1,4 @@
-""" Database model for Submodule 3 Leaderboard """
+""" Database model for Submodule 3 Leaderboard - Normalized Transaction Data """
 from __init__ import app, db
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
@@ -6,50 +6,54 @@ from sqlalchemy.exc import IntegrityError
 
 class LeaderboardEntry(db.Model):
     """
-    LeaderboardEntry Model
+    LeaderboardEntry Model - Normalized Transaction Data
 
-    Represents a score entry in the submodule 3 game leaderboard.
+    Represents a single score transaction in the submodule 3 game leaderboard.
+    Uses proper foreign key relationship to User table for normalization.
+    Each entry is a transaction recording a game attempt.
 
     Attributes:
         id (Column): Primary key, unique identifier for the entry.
-        _uid (Column): The user's unique identifier.
-        _player_name (Column): The player's display name.
-        _score (Column): The score achieved.
-        _correct_answers (Column): Number of correct answers.
-        _timestamp (Column): When the score was recorded.
+        user_id (Column): Foreign key to users table (required for score tracking).
+        _score (Column): The score achieved in this game transaction.
+        _correct_answers (Column): Number of correct answers in this attempt.
+        _timestamp (Column): When the score transaction was recorded.
     """
     __tablename__ = 'leaderboard'
     __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
-    _uid = db.Column(db.String(255), nullable=False)
-    _player_name = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     _score = db.Column(db.Integer, nullable=False)
     _correct_answers = db.Column(db.Integer, nullable=False)
     _timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def __init__(self, uid, player_name, score, correct_answers, timestamp=None):
-        self._uid = uid
-        self._player_name = player_name
+    def __init__(self, user_id, score, correct_answers, timestamp=None):
+        self.user_id = user_id
         self._score = score
         self._correct_answers = correct_answers
         self._timestamp = timestamp if timestamp else datetime.utcnow()
 
+    def _get_user(self):
+        """Helper to get the related User object"""
+        from model.user import User
+        return User.query.get(self.user_id)
+
     @property
     def uid(self):
-        return self._uid
-
-    @uid.setter
-    def uid(self, value):
-        self._uid = value
+        """Get uid from related User object (normalized access)"""
+        user = self._get_user()
+        if user:
+            return user.uid
+        return None
 
     @property
     def player_name(self):
-        return self._player_name
-
-    @player_name.setter
-    def player_name(self, value):
-        self._player_name = value
+        """Get player name from related User object (normalized access)"""
+        user = self._get_user()
+        if user:
+            return user.name
+        return "Unknown"
 
     @property
     def score(self):
@@ -83,8 +87,9 @@ class LeaderboardEntry(db.Model):
     def read(self):
         return {
             "id": self.id,
-            "uid": self._uid,
-            "playerName": self._player_name,
+            "user_id": self.user_id,
+            "uid": self.uid,  # Derived from User relationship
+            "playerName": self.player_name,  # Derived from User relationship
             "score": self._score,
             "correctAnswers": self._correct_answers,
             "timestamp": self._timestamp.isoformat() if self._timestamp else None
@@ -111,13 +116,29 @@ class LeaderboardEntry(db.Model):
             LeaderboardEntry._timestamp.asc()
         ).all()
 
+    @staticmethod
+    def get_user_scores(user_id):
+        """Get all score transactions for a specific user"""
+        return LeaderboardEntry.query.filter_by(user_id=user_id).order_by(
+            LeaderboardEntry._timestamp.desc()
+        ).all()
+
+    @staticmethod
+    def get_user_best_score(user_id):
+        """Get user's best score transaction"""
+        return LeaderboardEntry.query.filter_by(user_id=user_id).order_by(
+            LeaderboardEntry._score.desc()
+        ).first()
+
 
 """Database Initialization"""
 import random
 
 
 def initLeaderboard():
-    """Initialize leaderboard with sample data"""
+    """Initialize leaderboard with sample transaction data"""
+    from model.user import User
+
     with app.app_context():
         db.create_all()
 
@@ -126,31 +147,26 @@ def initLeaderboard():
             print("Leaderboard already initialized")
             return
 
-        # Sample player names
-        players = [
-            ("alice", "Alice Johnson"),
-            ("bob", "Bob Smith"),
-            ("charlie", "Charlie Brown"),
-            ("diana", "Diana Prince"),
-            ("evan", "Evan Williams"),
-            ("fiona", "Fiona Apple"),
-            ("george", "George Lucas"),
-            ("hannah", "Hannah Montana"),
-            ("ivan", "Ivan Petrov"),
-            ("julia", "Julia Roberts"),
-        ]
+        # Get existing users to link leaderboard entries (normalized relationship)
+        users = User.query.all()
 
-        # Create 10 sample leaderboard entries
-        for i, (uid, name) in enumerate(players):
-            score = random.randint(60, 100)
-            correct = score // 10
-            entry = LeaderboardEntry(
-                uid=uid,
-                player_name=name,
-                score=score,
-                correct_answers=correct
-            )
-            db.session.add(entry)
+        if not users:
+            print("No users found. Please initialize users first.")
+            return
+
+        # Create sample leaderboard transaction entries for existing users
+        # Each user gets 1-3 game attempts (transactions)
+        for user in users:
+            num_attempts = random.randint(1, 3)
+            for _ in range(num_attempts):
+                score = random.randint(60, 100)
+                correct = score // 10
+                entry = LeaderboardEntry(
+                    user_id=user.id,
+                    score=score,
+                    correct_answers=correct
+                )
+                db.session.add(entry)
 
         db.session.commit()
-        print(f"Initialized {LeaderboardEntry.query.count()} leaderboard entries")
+        print(f"Initialized {LeaderboardEntry.query.count()} leaderboard transaction entries")
