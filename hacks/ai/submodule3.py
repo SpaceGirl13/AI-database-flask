@@ -216,7 +216,7 @@ def save_score():
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
         # Get user info if logged in, otherwise use provided playerName or anonymous
-        if hasattr(g, 'current_user') and g.current_user:
+        if not hasattr(g, 'current_user') or not g.current_user:
             return jsonify({
                 'error': 'Must be logged in to save score',
                 'success': False
