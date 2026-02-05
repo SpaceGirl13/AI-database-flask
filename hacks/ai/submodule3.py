@@ -217,16 +217,14 @@ def save_score():
 
         # Get user info if logged in, otherwise use provided playerName or anonymous
         if hasattr(g, 'current_user') and g.current_user:
-            uid = g.current_user.uid
-            player_name = g.current_user.name
-        else:
-            uid = score_data.get('playerName', f'anonymous_{datetime.now().strftime("%H%M%S")}')
-            player_name = score_data.get('playerName', 'Anonymous Player')
-
+            return jsonify({
+                'error': 'Must be logged in to save score',
+                'success': False
+            }), 401
+      
         # Create new leaderboard entry
         entry = LeaderboardEntry(
-            uid=uid,
-            player_name=player_name,
+            user_id=g.current_user.id,
             score=score_data['score'],
             correct_answers=score_data['correctAnswers']
         )
@@ -234,11 +232,11 @@ def save_score():
 
         # Check if user made leaderboard (top 10)
         top_entries = LeaderboardEntry.get_top_scores(10)
-        top_10_uids = [e.uid for e in top_entries]
+        top_10_user_ids = [e.user_id for e in top_entries]
 
         was_newly_awarded = False
         badge_info = None
-        if hasattr(g, 'current_user') and g.current_user and g.current_user.uid in top_10_uids:
+        if g.current_user.id in top_10_user_ids:
             badge_id = 'super_smart_genius'
             was_newly_awarded = g.current_user.add_badge(badge_id)
             if was_newly_awarded:
@@ -258,6 +256,7 @@ def save_score():
 
     except Exception as e:
         db.session.rollback()
+        print(f"Error saving score: {str(e)}")  # Debug print
         return jsonify({'error': str(e)}), 500
 
 @game_api.route('/leaderboard', methods=['GET'])
