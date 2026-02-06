@@ -130,8 +130,8 @@ class User(db.Model, UserMixin):
     Attributes:
         __tablename__ (str): Specifies the name of the table in the database.
         id (Column): The primary key, an integer representing the unique identifier for the user.
-        _name (Column): A string representing the user's name. It is not unique and cannot be null.
-        _uid (Column): A unique string identifier for the user, cannot be null.
+        _name (Column): A string representing the user's display name (what shows on the UI). It is not unique and cannot be null.
+        _uid (Column): A unique string identifier for the user (username for login), cannot be null.
         _email (Column): A string representing the user's email address. It is not unique and cannot be null.
         _sid (Column): A string representing the user's student ID. It is not unique and can be null.
         _password (Column): A string representing the hashed password of the user. It is not unique and cannot be null.
@@ -148,8 +148,8 @@ class User(db.Model, UserMixin):
     __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
-    _name = db.Column(db.String(255), unique=False, nullable=False)
-    _uid = db.Column(db.String(255), unique=True, nullable=False)
+    _name = db.Column(db.String(255), unique=False, nullable=False)  # Display name
+    _uid = db.Column(db.String(255), unique=True, nullable=False)     # Username (login)
     _email = db.Column(db.String(255), unique=False, nullable=False)
     _sid = db.Column(db.String(255), unique=False, nullable=True)
     _password = db.Column(db.String(255), unique=False, nullable=False)
@@ -170,8 +170,23 @@ class User(db.Model, UserMixin):
     stock_user = db.relationship("StockUser", backref=db.backref("users", cascade="all"), lazy=True, uselist=False)
 
     def __init__(self, name, uid, password=None, kasm_server_needed=False, role="User", pfp='', grade_data=None, ap_exam=None, school="Unknown", sid=None):
-        self._name = name
-        self._uid = uid
+        """
+        Initialize a new User.
+        
+        Args:
+            name (str): Display name shown in the UI
+            uid (str): Username used for login (must be unique)
+            password (str, optional): Password for authentication
+            kasm_server_needed (bool): Whether user needs Kasm server access
+            role (str): User role (User, Teacher, Admin)
+            pfp (str): Profile picture path
+            grade_data (dict): Grade information
+            ap_exam (dict): AP exam data
+            school (str): School name
+            sid (str): Student ID
+        """
+        self._name = name          # Display name
+        self._uid = uid            # Username for login
         self._email = "?"
         self._sid = sid
         # Use default password from config if none provided
@@ -225,24 +240,28 @@ class User(db.Model, UserMixin):
         else:
             self.email = "?"
 
-    # a name getter method, extracts name from object
+    # Display name getter - what shows in the UI
     @property
     def name(self):
+        """Get the user's display name."""
         return self._name
 
-    # a setter function, allows name to be updated after initial object creation
+    # Display name setter
     @name.setter
     def name(self, name):
+        """Set the user's display name."""
         self._name = name
 
-    # a getter method, extracts email from object
+    # Username getter - used for login
     @property
     def uid(self):
+        """Get the user's username (used for login)."""
         return self._uid
 
-    # a setter function, allows name to be updated after initial object creation
+    # Username setter
     @uid.setter
     def uid(self, uid):
+        """Set the user's username (used for login)."""
         self._uid = uid
 
     # Student ID getter method
@@ -473,8 +492,8 @@ class User(db.Model, UserMixin):
     def read(self):
         data = {
             "id": self.id,
-            "uid": self.uid,
-            "name": self.name,
+            "uid": self.uid,           # Username for login
+            "name": self.name,         # Display name
             "email": self.email,
             "sid": self.sid,
             "role": self.role,
@@ -496,8 +515,8 @@ class User(db.Model, UserMixin):
         if not isinstance(inputs, dict):
             return self
 
-        name = inputs.get("name", "")
-        uid = inputs.get("uid", "")
+        name = inputs.get("name", "")              # Display name
+        uid = inputs.get("uid", "")                # Username
         email = inputs.get("email", "")
         sid = inputs.get("sid", "")
         password = inputs.get("password", "")
@@ -512,9 +531,9 @@ class User(db.Model, UserMixin):
 
         # Update table with new data
         if name:
-            self.name = name
+            self.name = name  # Update display name
         if uid:
-            self.set_uid(uid)
+            self.set_uid(uid)  # Update username
         if email:
             self.email = email
         if sid:
@@ -781,9 +800,28 @@ def initUsers():
             'last_updated': None
         }
 
-        u1 = User(name=app.config['ADMIN_USER'], uid=app.config['ADMIN_UID'], password=app.config['ADMIN_PASSWORD'], pfp=app.config['ADMIN_PFP'], kasm_server_needed=True, role="Admin")
-        u2 = User(name=app.config['DEFAULT_USER'], uid=app.config['DEFAULT_UID'], password=app.config['DEFAULT_USER_PASSWORD'], pfp=app.config['DEFAULT_USER_PFP'])
-        u3 = User(name='Nicholas Tesla', uid='niko', pfp='niko.png', role='Teacher', password=app.config['DEFAULT_USER_PASSWORD'])
+        # Updated user creation with display names
+        u1 = User(
+            name=app.config.get('ADMIN_USER', 'Admin User'),  # Display name
+            uid=app.config['ADMIN_UID'],                       # Username
+            password=app.config['ADMIN_PASSWORD'],
+            pfp=app.config.get('ADMIN_PFP', ''),
+            kasm_server_needed=True,
+            role="Admin"
+        )
+        u2 = User(
+            name=app.config.get('DEFAULT_USER', 'Default User'),  # Display name
+            uid=app.config['DEFAULT_UID'],                         # Username
+            password=app.config.get('DEFAULT_USER_PASSWORD', 'changeme123'),
+            pfp=app.config.get('DEFAULT_USER_PFP', '')
+        )
+        u3 = User(
+            name='Nicholas Tesla',     # Display name
+            uid='niko',                # Username
+            pfp='niko.png',
+            role='Teacher',
+            password=app.config.get('DEFAULT_USER_PASSWORD', 'changeme123')
+        )
 
         users = [u1, u2, u3]
        
