@@ -263,8 +263,26 @@ def save_score():
 def get_leaderboard():
     """Get top 10 scores from database"""
     try:
+        print("=== LEADERBOARD DEBUG ===")
+        print("Fetching top entries...")
+        
         top_entries = LeaderboardEntry.get_top_scores(10)
-        leaderboard = [entry.read() for entry in top_entries]
+        print(f"Found {len(top_entries)} entries")
+        
+        leaderboard = []
+        for entry in top_entries:
+            print(f"Processing entry {entry.id}, user_id: {entry.user_id}")
+            try:
+                entry_data = entry.read()
+                print(f"Entry data: {entry_data}")
+                leaderboard.append(entry_data)
+            except Exception as e:
+                print(f"Error reading entry {entry.id}: {str(e)}")
+                # Skip this entry if there's an error
+                continue
+
+        print(f"Final leaderboard: {leaderboard}")
+        print("=== END DEBUG ===")
 
         return jsonify({
             'success': True,
@@ -272,6 +290,9 @@ def get_leaderboard():
         }), 200
 
     except Exception as e:
+        print(f"LEADERBOARD ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @game_api.route('/complete', methods=['POST'])
