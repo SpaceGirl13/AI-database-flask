@@ -243,8 +243,12 @@ class User(db.Model, UserMixin):
     # Display name getter - what shows in the UI
     @property
     def name(self):
-        """Get the user's display name."""
-        return self._name
+        """Get the user's display name. Falls back to username if not set."""
+        # Return display name if it exists and is not empty
+        if self._name and self._name.strip():
+            return self._name
+        # Fall back to username if display name is empty or None
+        return self._uid
 
     # Display name setter
     @name.setter
