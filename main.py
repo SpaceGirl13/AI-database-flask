@@ -38,6 +38,7 @@ from api.math_questions_api import math_questions_api  # Import math questions A
 from api.science_questions_api import science_questions_api  # Import science questions API
 from api.coding_questions_api import coding_questions_api  # Import coding questions API
 from api.admin_api import admin_api  # Import admin API for database management
+from api.cs_prompt_api import cs_prompt_api  # Import CS prompt API for Activity 3
 #from api.announcement import announcement_api ##temporary revert
 
 # database Initialization functions
@@ -45,6 +46,7 @@ from model.user import User, initUsers
 from model.user import Section;
 from model.github import GitHubUser
 from model.feedback import Feedback
+from model.cs_prompt import CSPrompt
 from api.analytics import get_date_range
 # from api.grade_api import grade_api
 from api.study import study_api
@@ -100,6 +102,7 @@ app.register_blueprint(math_questions_api, url_prefix='/api/math')  # Register m
 app.register_blueprint(science_questions_api, url_prefix='/api/science')  # Register science questions API
 app.register_blueprint(coding_questions_api, url_prefix='/api/coding')  # Register coding questions API
 app.register_blueprint(admin_api)  # Register admin API for database management
+app.register_blueprint(cs_prompt_api)  # Register CS prompt API for Activity 3
 # app.register_blueprint(announcement_api) ##temporary revert
 
 # Jokes file initialization and ensure DB/tables are present
@@ -140,6 +143,24 @@ with app.app_context():
                 print(f"Warning: initUsers() failed: {e}")
     except Exception as e:
         print(f"Warning: user initialization check failed: {e}")
+
+    # Initialize leaderboard with sample data if empty
+    try:
+        from model.leaderboard import LeaderboardEntry, initLeaderboard
+        leaderboard_count = None
+        try:
+            leaderboard_count = LeaderboardEntry.query.count()
+        except Exception:
+            leaderboard_count = None
+        if not leaderboard_count:
+            print("🔧 No leaderboard entries found - initializing sample data...")
+            try:
+                initLeaderboard()
+                print("✅ Leaderboard initialized")
+            except Exception as e:
+                print(f"Warning: initLeaderboard() failed: {e}")
+    except Exception as e:
+        print(f"Warning: leaderboard initialization check failed: {e}")
 
 # Tell Flask-Login the view function name of your login route
 login_manager.login_view = "login"

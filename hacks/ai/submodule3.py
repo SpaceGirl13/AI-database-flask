@@ -215,18 +215,18 @@ def save_score():
             if field not in score_data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
-        # Get user info if logged in, otherwise use provided playerName or anonymous
+        # Get user_id if logged in
+        user_id = None
         if hasattr(g, 'current_user') and g.current_user:
-            uid = g.current_user.uid
-            player_name = g.current_user.name
+            user_id = g.current_user.id
         else:
-            uid = score_data.get('playerName', f'anonymous_{datetime.now().strftime("%H%M%S")}')
-            player_name = score_data.get('playerName', 'Anonymous Player')
+            # For anonymous users, try to find or create a guest user
+            # Or return error requiring login
+            return jsonify({'error': 'Login required to save scores'}), 401
 
-        # Create new leaderboard entry
+        # Create new leaderboard entry with user_id (foreign key)
         entry = LeaderboardEntry(
-            uid=uid,
-            player_name=player_name,
+            user_id=user_id,
             score=score_data['score'],
             correct_answers=score_data['correctAnswers']
         )
@@ -265,7 +265,18 @@ def get_leaderboard():
     """Get top 10 scores from database"""
     try:
         top_entries = LeaderboardEntry.get_top_scores(10)
-        leaderboard = [entry.read() for entry in top_entries]
+
+        if top_entries:
+            leaderboard = [entry.read() for entry in top_entries]
+        else:
+            # Return sample data if no entries exist
+            leaderboard = [
+                {"id": 1, "playerName": "PrompMaster", "score": 100, "correctAnswers": 10},
+                {"id": 2, "playerName": "AIExpert", "score": 95, "correctAnswers": 9},
+                {"id": 3, "playerName": "CodeWizard", "score": 90, "correctAnswers": 9},
+                {"id": 4, "playerName": "TechGenius", "score": 85, "correctAnswers": 8},
+                {"id": 5, "playerName": "DataNinja", "score": 80, "correctAnswers": 8},
+            ]
 
         return jsonify({
             'success': True,
@@ -273,6 +284,8 @@ def get_leaderboard():
         }), 200
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @game_api.route('/complete', methods=['POST'])
