@@ -139,34 +139,31 @@ def initLeaderboard():
     """Initialize leaderboard with sample transaction data"""
     from model.user import User
 
-    with app.app_context():
-        db.create_all()
+    # Check if leaderboard already has entries
+    if LeaderboardEntry.query.count() > 0:
+        print("Leaderboard already initialized")
+        return
 
-        # Check if leaderboard already has entries
-        if LeaderboardEntry.query.count() > 0:
-            print("Leaderboard already initialized")
-            return
+    # Get existing users to link leaderboard entries (normalized relationship)
+    users = User.query.all()
 
-        # Get existing users to link leaderboard entries (normalized relationship)
-        users = User.query.all()
+    if not users:
+        print("No users found. Please initialize users first.")
+        return
 
-        if not users:
-            print("No users found. Please initialize users first.")
-            return
+    # Create sample leaderboard transaction entries for existing users
+    # Each user gets 1-3 game attempts (transactions)
+    for user in users:
+        num_attempts = random.randint(1, 3)
+        for _ in range(num_attempts):
+            score = random.randint(60, 100)
+            correct = score // 10
+            entry = LeaderboardEntry(
+                user_id=user.id,
+                score=score,
+                correct_answers=correct
+            )
+            db.session.add(entry)
 
-        # Create sample leaderboard transaction entries for existing users
-        # Each user gets 1-3 game attempts (transactions)
-        for user in users:
-            num_attempts = random.randint(1, 3)
-            for _ in range(num_attempts):
-                score = random.randint(60, 100)
-                correct = score // 10
-                entry = LeaderboardEntry(
-                    user_id=user.id,
-                    score=score,
-                    correct_answers=correct
-                )
-                db.session.add(entry)
-
-        db.session.commit()
-        print(f"Initialized {LeaderboardEntry.query.count()} leaderboard transaction entries")
+    db.session.commit()
+    print(f"Initialized {LeaderboardEntry.query.count()} leaderboard transaction entries")

@@ -53,6 +53,7 @@ from model.study import Study, initStudies
 from model.classroom import Classroom
 from model.post import Post, init_posts
 from model.microblog import MicroBlog, Topic, init_microblogs
+from model.leaderboard import LeaderboardEntry, initLeaderboard
 from hacks.jokes import initJokes 
 # from model.announcement import Announcement ##temporary revert
 
@@ -123,7 +124,7 @@ with app.app_context():
         # Don't let badge init break app startup; log and continue
         print(f"Warning: init_badges() failed: {e}")
 
-    # Initialize default users if none exist (idempotent)
+    # Initialize default users if none exist (idempotent) - MUST come before leaderboard
     try:
         from model.user import initUsers
         user_count = None
@@ -140,6 +141,17 @@ with app.app_context():
                 print(f"Warning: initUsers() failed: {e}")
     except Exception as e:
         print(f"Warning: user initialization check failed: {e}")
+
+    # Initialize leaderboard if empty (must come after users)
+    try:
+        from model.leaderboard import LeaderboardEntry
+        leaderboard_count = LeaderboardEntry.query.count()
+        if leaderboard_count == 0:
+            print("🔧 No leaderboard entries found - initializing leaderboard...")
+            initLeaderboard()
+            print("✅ Leaderboard initialized")
+    except Exception as e:
+        print(f"Warning: leaderboard initialization failed: {e}")
 
 # Tell Flask-Login the view function name of your login route
 login_manager.login_view = "login"
