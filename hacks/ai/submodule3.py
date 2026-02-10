@@ -295,6 +295,47 @@ def get_leaderboard():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+@game_api.route('/leaderboard-seed', methods=['POST'])
+def seed_leaderboard():
+    """Manually seed the leaderboard with sample data"""
+    try:
+        from model.leaderboard import initLeaderboard
+        from model.user import User
+        
+        print("=== SEEDING LEADERBOARD ===")
+        
+        # Check if there are users
+        user_count = User.query.count()
+        print(f"Users in database: {user_count}")
+        
+        # Check if there's already leaderboard data
+        existing_count = LeaderboardEntry.query.count()
+        print(f"Existing leaderboard entries: {existing_count}")
+        
+        if existing_count > 0:
+            print("Leaderboard already has data, clearing it...")
+            # Clear existing entries
+            LeaderboardEntry.query.delete()
+            db.session.commit()
+        
+        # Initialize the leaderboard
+        initLeaderboard()
+        
+        new_count = LeaderboardEntry.query.count()
+        print(f"Leaderboard now has {new_count} entries")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Leaderboard seeded with {new_count} entries',
+            'entries': new_count
+        }), 200
+        
+    except Exception as e:
+        print(f"SEED LEADERBOARD ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 @game_api.route('/complete', methods=['POST'])
 @token_required()
 def complete_submodule():
