@@ -215,13 +215,13 @@ def save_score():
             if field not in score_data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
-        # Get user info if logged in, otherwise use provided playerName or anonymous
+        # Require login to save scores
         if not hasattr(g, 'current_user') or not g.current_user:
             return jsonify({
                 'error': 'Must be logged in to save score',
                 'success': False
             }), 401
-      
+
         # Create new leaderboard entry
         entry = LeaderboardEntry(
             user_id=g.current_user.id,
@@ -268,7 +268,7 @@ def get_leaderboard():
         
         top_entries = LeaderboardEntry.get_top_scores(10)
         print(f"Found {len(top_entries)} entries")
-        
+
         leaderboard = []
         for entry in top_entries:
             print(f"Processing entry {entry.id}, user_id: {entry.user_id}")
@@ -278,7 +278,6 @@ def get_leaderboard():
                 leaderboard.append(entry_data)
             except Exception as e:
                 print(f"Error reading entry {entry.id}: {str(e)}")
-                # Skip this entry if there's an error
                 continue
 
         print(f"Final leaderboard: {leaderboard}")

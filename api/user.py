@@ -620,7 +620,7 @@ class UserAPI:
             """
             Create a new guest user account.
 
-            Accepts username (uid), display name, and password.
+            Accepts only username (uid) and password. Auto-generates required fields.
             No GitHub validation required for guest accounts.
 
             Returns:
@@ -630,32 +630,27 @@ class UserAPI:
             body = request.get_json()
 
             # Validate uid (username)
-            uid = body.get('uid', '').strip()
-            if not uid or len(uid) < 2:
+            uid = body.get('uid')
+            if uid is None or len(uid) < 2:
                 return {'message': 'Username is missing, or is less than 2 characters'}, 400
 
-            # ✅ GET DISPLAY NAME FROM THE FORM!
-            name = body.get('name', '').strip()
-            if not name or len(name) < 2:
-                # Use fallback only if no display name provided
-                name = f"Guest {uid}"
-
             # Validate password (relaxed requirement for guests)
-            password = body.get('password', '')
-            if not password or len(password) < 2:
+            password = body.get('password')
+            if password is None or len(password) < 2:
                 return {'message': 'Password is missing, or is less than 2 characters'}, 400
 
-            # Auto-generate optional fields for guest accounts
+            # Auto-generate required fields for guest accounts
+            name = f"Guest_{uid}"
             email = "?"
             sid = "?"
             school = "?"
 
-            # ✅ Create User object with the ACTUAL display name from the form
+            # Create User object with auto-generated name
             user_obj = User(name=name, uid=uid, password=password)
 
             # Build cleaned body with all fields filled
             cleaned_body = {
-                'name': name,        # ✅ Use the display name
+                'name': name,
                 'uid': uid,
                 'password': password,
                 'email': email,
