@@ -215,16 +215,18 @@ def save_score():
             if field not in score_data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
-        # Require login to save scores
-        if not hasattr(g, 'current_user') or not g.current_user:
-            return jsonify({
-                'error': 'Must be logged in to save score',
-                'success': False
-            }), 401
+        # Get user info if logged in, otherwise use provided playerName or anonymous
+        if hasattr(g, 'current_user') and g.current_user:
+            uid = g.current_user.uid
+            player_name = g.current_user.name
+        else:
+            uid = score_data.get('playerName', f'anonymous_{datetime.now().strftime("%H%M%S")}')
+            player_name = score_data.get('playerName', 'Anonymous Player')
 
         # Create new leaderboard entry
         entry = LeaderboardEntry(
-            user_id=g.current_user.id,
+            uid=uid,
+            player_name=player_name,
             score=score_data['score'],
             correct_answers=score_data['correctAnswers']
         )
@@ -267,21 +269,7 @@ def get_leaderboard():
         print("Fetching top entries...")
         
         top_entries = LeaderboardEntry.get_top_scores(10)
-        print(f"Found {len(top_entries)} entries")
-
-        leaderboard = []
-        for entry in top_entries:
-            print(f"Processing entry {entry.id}, user_id: {entry.user_id}")
-            try:
-                entry_data = entry.read()
-                print(f"Entry data: {entry_data}")
-                leaderboard.append(entry_data)
-            except Exception as e:
-                print(f"Error reading entry {entry.id}: {str(e)}")
-                continue
-
-        print(f"Final leaderboard: {leaderboard}")
-        print("=== END DEBUG ===")
+        leaderboard = [entry.read() for entry in top_entries]
 
         return jsonify({
             'success': True,
@@ -289,50 +277,6 @@ def get_leaderboard():
         }), 200
 
     except Exception as e:
-        print(f"LEADERBOARD ERROR: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
-@game_api.route('/leaderboard-seed', methods=['POST'])
-def seed_leaderboard():
-    """Manually seed the leaderboard with sample data"""
-    try:
-        from model.leaderboard import initLeaderboard
-        from model.user import User
-        
-        print("=== SEEDING LEADERBOARD ===")
-        
-        # Check if there are users
-        user_count = User.query.count()
-        print(f"Users in database: {user_count}")
-        
-        # Check if there's already leaderboard data
-        existing_count = LeaderboardEntry.query.count()
-        print(f"Existing leaderboard entries: {existing_count}")
-        
-        if existing_count > 0:
-            print("Leaderboard already has data, clearing it...")
-            # Clear existing entries
-            LeaderboardEntry.query.delete()
-            db.session.commit()
-        
-        # Initialize the leaderboard
-        initLeaderboard()
-        
-        new_count = LeaderboardEntry.query.count()
-        print(f"Leaderboard now has {new_count} entries")
-        
-        return jsonify({
-            'success': True,
-            'message': f'Leaderboard seeded with {new_count} entries',
-            'entries': new_count
-        }), 200
-        
-    except Exception as e:
-        print(f"SEED LEADERBOARD ERROR: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @game_api.route('/complete', methods=['POST'])
