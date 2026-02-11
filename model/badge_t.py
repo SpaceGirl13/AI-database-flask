@@ -105,7 +105,9 @@ class UserBadge(db.Model):
     __table_args__ = {'extend_existing': True}
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
-    badge_id = db.Column(db.Integer, db.ForeignKey('badges.id'), primary_key=True)
+    # Add ON DELETE CASCADE so rows are removed if the parent user or badge is deleted
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    badge_id = db.Column(db.Integer, db.ForeignKey('badges.id', ondelete='CASCADE'), primary_key=True)
     awarded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -151,8 +153,8 @@ def init_badges():
         badge_definitions = {
             'delightful_data_scientist': {
                 'name': 'Delightful Data Scientist',
-                'description': 'Mastered foundational AI concepts and data literacy',
-                'requirement': 'Complete Submodule 1',
+                'description': 'Mastered Math and CS prompt engineering',
+                'requirement': 'Complete CS and Math on Submodule 2',
                 'image_url': 'https://github.com/user-attachments/assets/d3d6f596-cae3-401d-9390-a3721aa7cfb3'
             },
             'perfect_prompt_engineer': {

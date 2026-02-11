@@ -215,18 +215,16 @@ def save_score():
             if field not in score_data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
 
-        # Get user info if logged in, otherwise use provided playerName or anonymous
-        if hasattr(g, 'current_user') and g.current_user:
-            uid = g.current_user.uid
-            player_name = g.current_user.name
-        else:
-            uid = score_data.get('playerName', f'anonymous_{datetime.now().strftime("%H%M%S")}')
-            player_name = score_data.get('playerName', 'Anonymous Player')
+        # Require login to save scores
+        if not hasattr(g, 'current_user') or not g.current_user:
+            return jsonify({
+                'error': 'Must be logged in to save score',
+                'success': False
+            }), 401
 
-        # Create new leaderboard entry
+        # Create new leaderboard entry with user_id (foreign key)
         entry = LeaderboardEntry(
-            uid=uid,
-            player_name=player_name,
+            user_id=g.current_user.id,
             score=score_data['score'],
             correct_answers=score_data['correctAnswers']
         )
@@ -238,7 +236,7 @@ def save_score():
 
         was_newly_awarded = False
         badge_info = None
-        if g.current_user.id in top_10_user_ids:
+        if g.current_user and g.current_user.id in top_10_user_ids:
             badge_id = 'super_smart_genius'
             was_newly_awarded = g.current_user.add_badge(badge_id)
             if was_newly_awarded:
