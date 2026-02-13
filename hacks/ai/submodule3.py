@@ -276,9 +276,12 @@ def get_leaderboard():
 
     except Exception as e:
         import traceback
-        print("=== LEADERBOARD ERROR ===")
-        print(traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+        import sys
+        print("=== LEADERBOARD ERROR ===", flush=True)
+        print(traceback.format_exc(), flush=True)
+        sys.stdout.flush()
+        sys.stderr.flush()
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 @game_api.route('/complete', methods=['POST'])
 @token_required()
