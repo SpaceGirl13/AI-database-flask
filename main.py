@@ -142,6 +142,16 @@ with app.app_context():
     except Exception as e:
         print(f"Warning: user initialization check failed: {e}")
 
+    # Initialize leaderboard with sample data if empty
+    try:
+        leaderboard_count = LeaderboardEntry.query.count()
+        if not leaderboard_count:
+            print("🔧 No leaderboard entries - initializing sample data...")
+            initLeaderboard()
+            print("✅ Leaderboard initialized")
+    except Exception as e:
+        print(f"Warning: initLeaderboard() failed: {e}")
+
 # Tell Flask-Login the view function name of your login route
 login_manager.login_view = "login"
 
